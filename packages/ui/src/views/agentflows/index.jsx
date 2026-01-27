@@ -178,7 +178,7 @@ const Agentflows = () => {
                         onSearchChange={onSearchChange}
                         search={true}
                         searchPlaceholder='Search Name or Category'
-                        title='Agentflows'
+                        title='Agent Pipeline'
                         description='Multi-agent systems, workflow orchestration'
                     >
                         <ToggleButtonGroup
@@ -343,7 +343,7 @@ const Agentflows = () => {
                                     alt='AgentsEmptySVG'
                                 />
                             </Box>
-                            <div>No Agents Yet</div>
+                            <div>No Agent Pipelines Yet</div>
                         </Stack>
                     )}
                 </Stack>

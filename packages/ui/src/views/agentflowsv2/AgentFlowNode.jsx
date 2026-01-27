@@ -34,6 +34,9 @@ import CancelIcon from '@mui/icons-material/Cancel'
 // const
 import { baseURL, AGENTFLOW_ICONS } from '@/store/constant'
 
+// API
+import toolsApi from '@/api/tools'
+
 const CardWrapper = styled(MainCard)(({ theme }) => ({
     background: theme.palette.card.main,
     color: theme.darkTextPrimary,
@@ -51,6 +54,78 @@ const StyledNodeToolbar = styled(NodeToolbar)(({ theme }) => ({
     borderRadius: '10px',
     boxShadow: '0 2px 14px 0 rgb(32 40 45 / 8%)'
 }))
+
+// Helper function to check if a string is a UUID (custom tool)
+const isUUID = (str) => {
+    if (!str || typeof str !== 'string') return false
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    return uuidRegex.test(str)
+}
+
+// Component to render tool icon (handles both custom tools and component nodes)
+const ToolIcon = memo(({ toolName, toolConfig, sx }) => {
+    const [iconSrc, setIconSrc] = useState(null)
+    const [isLoading, setIsLoading] = useState(false)
+
+    useEffect(() => {
+        // Check if toolName is 'customTool' and we have config with the actual tool ID
+        let actualToolId = toolName
+        if (toolName === 'customTool' && toolConfig) {
+            // Extract the actual custom tool UUID from config
+            // The config structure: { toolAgentflowSelectedTool: 'customTool', selectedTool: '<UUID>' }
+            actualToolId = toolConfig.selectedTool || toolName
+        }
+
+        if (isUUID(actualToolId)) {
+            // It's a custom tool UUID, fetch the icon
+            setIsLoading(true)
+            toolsApi
+                .getSpecificTool(actualToolId)
+                .then((response) => {
+                    if (response.data && response.data.iconSrc) {
+                        setIconSrc(response.data.iconSrc)
+                    } else {
+                        setIconSrc(`${baseURL}/api/v1/node-icon/customTool`)
+                    }
+                })
+                .catch(() => {
+                    setIconSrc(`${baseURL}/api/v1/node-icon/customTool`)
+                })
+                .finally(() => {
+                    setIsLoading(false)
+                })
+        } else {
+            // It's a component node, use node-icon endpoint
+            setIconSrc(`${baseURL}/api/v1/node-icon/${toolName}`)
+        }
+    }, [toolName, toolConfig])
+
+    if (isLoading) {
+        return (
+            <Box
+                sx={{
+                    ...sx,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }}
+            >
+                <IconLoader size={12} />
+            </Box>
+        )
+    }
+
+    return (
+        <Box
+            component='img'
+            src={iconSrc || `${baseURL}/api/v1/node-icon/${toolName}`}
+            alt={toolName}
+            sx={sx}
+        />
+    )
+})
+
+ToolIcon.displayName = 'ToolIcon'
 
 // ===========================|| CANVAS NODE ||=========================== //
 
@@ -191,7 +266,7 @@ const AgentFlowNode = ({ data }) => {
             } else if (componentNode.badge === 'DEPRECATING') {
                 setWarningMessage(
                     componentNode?.deprecateMessage ??
-                        'This node will be deprecated in the next release. Change to a new node tagged with NEW'
+                    'This node will be deprecated in the next release. Change to a new node tagged with NEW'
                 )
             } else if (componentNode.warning) {
                 setWarningMessage(componentNode.warning)
@@ -447,7 +522,13 @@ const AgentFlowNode = ({ data }) => {
                                     {
                                         tools:
                                             data.inputs?.selectedTool ?? data.inputs?.toolAgentflowSelectedTool
-                                                ? [{ selectedTool: data.inputs?.selectedTool ?? data.inputs?.toolAgentflowSelectedTool }]
+                                                ? [
+                                                    {
+                                                        selectedTool: data.inputs?.selectedTool ?? data.inputs?.toolAgentflowSelectedTool,
+                                                        selectedToolConfig: data.inputs?.selectedToolConfig,
+                                                        toolAgentflowSelectedToolConfig: data.inputs?.toolAgentflowSelectedToolConfig
+                                                    }
+                                                ]
                                                 : [],
                                         toolProperty: ['selectedTool', 'toolAgentflowSelectedTool']
                                     },
@@ -455,9 +536,9 @@ const AgentFlowNode = ({ data }) => {
                                     {
                                         tools: data.inputs?.agentToolsBuiltInOpenAI
                                             ? (typeof data.inputs.agentToolsBuiltInOpenAI === 'string'
-                                                  ? JSON.parse(data.inputs.agentToolsBuiltInOpenAI)
-                                                  : data.inputs.agentToolsBuiltInOpenAI
-                                              ).map((tool) => ({ builtInTool: tool }))
+                                                ? JSON.parse(data.inputs.agentToolsBuiltInOpenAI)
+                                                : data.inputs.agentToolsBuiltInOpenAI
+                                            ).map((tool) => ({ builtInTool: tool }))
                                             : [],
                                         toolProperty: 'builtInTool',
                                         isBuiltInOpenAI: true
@@ -465,9 +546,9 @@ const AgentFlowNode = ({ data }) => {
                                     {
                                         tools: data.inputs?.agentToolsBuiltInGemini
                                             ? (typeof data.inputs.agentToolsBuiltInGemini === 'string'
-                                                  ? JSON.parse(data.inputs.agentToolsBuiltInGemini)
-                                                  : data.inputs.agentToolsBuiltInGemini
-                                              ).map((tool) => ({ builtInTool: tool }))
+                                                ? JSON.parse(data.inputs.agentToolsBuiltInGemini)
+                                                : data.inputs.agentToolsBuiltInGemini
+                                            ).map((tool) => ({ builtInTool: tool }))
                                             : [],
                                         toolProperty: 'builtInTool',
                                         isBuiltInGemini: true
@@ -475,9 +556,9 @@ const AgentFlowNode = ({ data }) => {
                                     {
                                         tools: data.inputs?.agentToolsBuiltInAnthropic
                                             ? (typeof data.inputs.agentToolsBuiltInAnthropic === 'string'
-                                                  ? JSON.parse(data.inputs.agentToolsBuiltInAnthropic)
-                                                  : data.inputs.agentToolsBuiltInAnthropic
-                                              ).map((tool) => ({ builtInTool: tool }))
+                                                ? JSON.parse(data.inputs.agentToolsBuiltInAnthropic)
+                                                : data.inputs.agentToolsBuiltInAnthropic
+                                            ).map((tool) => ({ builtInTool: tool }))
                                             : [],
                                         toolProperty: 'builtInTool',
                                         isBuiltInAnthropic: true
@@ -488,6 +569,7 @@ const AgentFlowNode = ({ data }) => {
                                 return toolConfigs
                                     .filter((config) => config.tools && config.tools.length > 0)
                                     .map((config, configIndex) => (
+
                                         <Box key={`tools-${configIndex}`} sx={{ display: 'flex', gap: 1, mt: 1 }}>
                                             {config.tools.flatMap((tool, toolIndex) => {
                                                 if (Array.isArray(config.toolProperty)) {
@@ -495,18 +577,16 @@ const AgentFlowNode = ({ data }) => {
                                                         .filter((prop) => tool[prop])
                                                         .map((prop, propIndex) => {
                                                             const toolName = tool[prop]
+                                                            const toolConfig = tool.selectedToolConfig || tool.toolAgentflowSelectedToolConfig
                                                             return (
-                                                                <Box
+                                                                <ToolIcon
                                                                     key={`tool-${configIndex}-${toolIndex}-${propIndex}`}
-                                                                    component='img'
-                                                                    src={`${baseURL}/api/v1/node-icon/${toolName}`}
-                                                                    alt={toolName}
+                                                                    toolName={toolName}
+                                                                    toolConfig={toolConfig}
                                                                     sx={{
                                                                         width: 20,
                                                                         height: 20,
-                                                                        borderRadius: '50%',
                                                                         backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                                                                        padding: 0.3
                                                                     }}
                                                                 />
                                                             )
@@ -594,17 +674,14 @@ const AgentFlowNode = ({ data }) => {
                                                     }
 
                                                     return [
-                                                        <Box
+                                                        <ToolIcon
                                                             key={`tool-${configIndex}-${toolIndex}`}
-                                                            component='img'
-                                                            src={`${baseURL}/api/v1/node-icon/${toolName}`}
-                                                            alt={toolName}
+                                                            toolName={toolName}
+                                                            toolConfig={tool.selectedToolConfig || tool.toolAgentflowSelectedToolConfig}
                                                             sx={{
                                                                 width: 20,
                                                                 height: 20,
-                                                                borderRadius: '50%',
                                                                 backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                                                                padding: 0.3
                                                             }}
                                                         />
                                                     ]
