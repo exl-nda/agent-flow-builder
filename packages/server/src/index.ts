@@ -36,7 +36,7 @@ import { getAllowedIframeOrigins, getCorsOptions, sanitizeMiddleware } from './u
 
 declare global {
     namespace Express {
-        interface User extends LoggedInUser {}
+        interface User extends LoggedInUser { }
         interface Request {
             user?: LoggedInUser
         }
@@ -81,7 +81,7 @@ export class App {
         // Initialize database
         try {
             await this.AppDataSource.initialize()
-            logger.info('📦 [server]: Data Source initialized successfully')
+            logger.info('📦 [server]: Ddata Source initialized successfully')
 
             // Run Migrations Scripts
             await this.AppDataSource.runMigrations({ transaction: 'each' })
@@ -175,6 +175,7 @@ export class App {
 
         // Allow access from specified domains
         this.app.use(cors(getCorsOptions()))
+
 
         // Parse cookies
         this.app.use(cookieParser())

@@ -31,35 +31,35 @@ const settings = {
     title: '',
     type: 'group',
     children: [
-        {
-            id: 'viewMessages',
-            title: 'View Messages',
-            type: 'item',
-            url: '',
-            icon: icons.IconMessage
-        },
-        {
-            id: 'viewLeads',
-            title: 'View Leads',
-            type: 'item',
-            url: '',
-            icon: icons.IconUsers
-        },
-        {
-            id: 'viewUpsertHistory',
-            title: 'Upsert History',
-            type: 'item',
-            url: '',
-            icon: icons.IconDatabaseExport
-        },
-        {
-            id: 'chatflowConfiguration',
-            title: 'Configuration',
-            type: 'item',
-            url: '',
-            permission: 'chatflows:config',
-            icon: icons.IconAdjustmentsHorizontal
-        },
+        // {
+        //     id: 'viewMessages',
+        //     title: 'View Messages',
+        //     type: 'item',
+        //     url: '',
+        //     icon: icons.IconMessage
+        // },
+        // {
+        //     id: 'viewLeads',
+        //     title: 'View Leads',
+        //     type: 'item',
+        //     url: '',
+        //     icon: icons.IconUsers
+        // },
+        // {
+        //     id: 'viewUpsertHistory',
+        //     title: 'Upsert History',
+        //     type: 'item',
+        //     url: '',
+        //     icon: icons.IconDatabaseExport
+        // },
+        // {
+        //     id: 'chatflowConfiguration',
+        //     title: 'Configuration',
+        //     type: 'item',
+        //     url: '',
+        //     permission: 'chatflows:config',
+        //     icon: icons.IconAdjustmentsHorizontal
+        // },
         {
             id: 'saveAsTemplate',
             title: 'Save As Template',

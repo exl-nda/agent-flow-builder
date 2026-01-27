@@ -419,7 +419,7 @@ const AddNodes = ({ nodesData, node, isAgentCanvas, isAgentflowv2, onFlowGenerat
             >
                 {open ? <IconMinus /> : <IconPlus />}
             </StyledFab>
-            {isAgentflowv2 && (
+            {/* {isAgentflowv2 && (
                 <StyledFab
                     sx={{
                         left: 40,
@@ -437,7 +437,7 @@ const AddNodes = ({ nodesData, node, isAgentCanvas, isAgentflowv2, onFlowGenerat
                 >
                     <IconSparkles />
                 </StyledFab>
-            )}
+            )} */}
 
             <AgentflowGeneratorDialog
                 show={openDialog}
@@ -705,9 +705,9 @@ const AddNodes = ({ nodesData, node, isAgentCanvas, isAgentflowv2, onFlowGenerat
                                                                                                             background:
                                                                                                                 node.badge === 'DEPRECATING'
                                                                                                                     ? theme.palette.warning
-                                                                                                                          .main
+                                                                                                                        .main
                                                                                                                     : theme.palette.teal
-                                                                                                                          .main,
+                                                                                                                        .main,
                                                                                                             color:
                                                                                                                 node.badge !== 'DEPRECATING'
                                                                                                                     ? 'white'

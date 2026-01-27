@@ -6,12 +6,17 @@ import { getErrorMessage } from '../../errors/utils'
 
 // Get all component credentials
 const getAllComponentsCredentials = async (): Promise<any> => {
+    const disabled_credentials = process.env.DISABLED_CREDENTIALS
+        ? process.env.DISABLED_CREDENTIALS.split(',').map(c => c.trim())
+        : []
     try {
         const appServer = getRunningExpressApp()
         const dbResponse = []
         for (const credName in appServer.nodesPool.componentCredentials) {
             const clonedCred = cloneDeep(appServer.nodesPool.componentCredentials[credName])
-            dbResponse.push(clonedCred)
+            if (!disabled_credentials.includes(credName)) {
+                dbResponse.push(clonedCred)
+            }
         }
         return dbResponse
     } catch (error) {

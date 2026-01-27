@@ -1,6 +1,15 @@
 {
-    "ignore": ["**/*.spec.ts", ".git", "node_modules"],
-    "watch": ["commands", "index.ts", "src"],
-    "exec": "pnpm start",
+    "ignore": [
+        "**/*.spec.ts",
+        ".git",
+        "node_modules",
+        "dist"
+    ],
+    "watch": [
+        "commands",
+        "index.ts",
+        "src"
+    ],
+    "exec": "ts-node src/dev.ts",
     "ext": "ts"
 }

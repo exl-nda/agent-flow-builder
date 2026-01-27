@@ -16,7 +16,8 @@ import {
     AccordionDetails,
     Typography,
     Stack,
-    Card
+    Card,
+    Button
 } from '@mui/material'
 import { CopyBlock, atomOneDark } from 'react-code-blocks'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
@@ -93,11 +94,12 @@ const APICodeDialog = ({ show, dialogProps, onCancel }) => {
     const apiConfig = chatflow?.apiConfig ? JSON.parse(chatflow.apiConfig) : {}
     const overrideConfigStatus = apiConfig?.overrideConfig?.status !== undefined ? apiConfig.overrideConfig.status : false
 
-    const codes = ['Embed', 'Python', 'JavaScript', 'cURL', 'Share Chatbot']
+    const codes = ['LangGraph', 'MS Framework (Semantic Kernel)']//['Embed', 'Python', 'JavaScript', 'cURL', 'Share Chatbot']
     const [value, setValue] = useState(0)
     const [apiKeys, setAPIKeys] = useState([])
     const [chatflowApiKeyId, setChatflowApiKeyId] = useState('')
     const [selectedApiKey, setSelectedApiKey] = useState({})
+    const [selectedEnvironment, setSelectedEnvironment] = useState('dev')
     const [checkboxVal, setCheckbox] = useState(false)
     const [nodeConfig, setNodeConfig] = useState({})
     const [nodeConfigExpanded, setNodeConfigExpanded] = useState({})
@@ -395,7 +397,12 @@ query({"question": "Hey, how are you?"}).then((response) => {
             return ShareChatbotSVG
         } else if (codeLang === 'Configuration') {
             return settingsSVG
+        } else if (codeLang === 'Langgraph') {
+            return settingsSVG
+        } else if (codeLang === 'MS Framework (Semantic Kernel)') {
+            return settingsSVG
         }
+
         return pythonSVG
     }
 
@@ -677,6 +684,239 @@ formData.append("openAIApiKey[openAIEmbeddings_0]", "sk-my-openai-2nd-key")`
         }
     }
 
+    const getLanggraphCode = () => {
+        return `
+# =========================
+# LangGraph Demo Workflow
+# Email -> Digitize -> Extract -> Excel
+# =========================
+
+from typing import TypedDict, Optional, List
+from langgraph.graph import StateGraph, START, END
+import pandas as pd
+
+# -------------------------
+# STATE DEFINITION
+# -------------------------
+class AgentState(TypedDict):
+    emails: List[dict]
+    selected_email: Optional[dict]
+    digitized_text: Optional[str]
+    extracted_data: Optional[dict]
+    excel_path: Optional[str]
+
+# -------------------------
+# OUTLOOK TOOL (MOCK)
+# -------------------------
+def list_outlook_emails(state: AgentState):
+    print("📧 Fetching emails from Outlook...")
+    emails = [
+        {
+            "id": "email_1",
+            "subject": "KYC Document",
+            "has_attachment": True,
+            "attachment_url": "https://mock/file.pdf"
+        },
+        {
+            "id": "email_2",
+            "subject": "Hello",
+            "has_attachment": False
+        }
+    ]
+    return {"emails": emails}
+
+# -------------------------
+# FILTER EMAIL WITH ATTACHMENT
+# -------------------------
+def select_email(state: AgentState):
+    print("🔍 Selecting email with attachment...")
+    for email in state["emails"]:
+        if email.get("has_attachment"):
+            return {"selected_email": email}
+    return {"selected_email": None}
+
+# -------------------------
+# DECISION NODE
+# -------------------------
+def should_digitize(state: AgentState):
+    email = state["selected_email"]
+
+    if email and email.get("has_attachment"):
+        print("✅ Attachment found → Proceeding")
+        return "digitize"
+
+    print("❌ No attachment → Stopping flow")
+    return "stop"
+
+# -------------------------
+# DIGITIZATION (MOCK HTTP)
+# -------------------------
+def digitize_document(state: AgentState):
+    print("📄 Digitizing document...")
+    digitized_text = """
+    First Name: John
+    Last Name: Doe
+    Email: john.doe@example.com
+    """
+    return {"digitized_text": digitized_text}
+
+# -------------------------
+# EXTRACTION (MOCK HTTP)
+# -------------------------
+def extract_data(state: AgentState):
+    print("🧠 Extracting structured data...")
+    extracted = {
+        "first_name": "John",
+        "last_name": "Doe",
+        "email": "john.doe@example.com"
+    }
+    return {"extracted_data": extracted}
+
+# -------------------------
+# EXCEL GENERATION TOOL
+# -------------------------
+def generate_excel(state: AgentState):
+    print("📊 Generating Excel file...")
+    df = pd.DataFrame([state["extracted_data"]])
+    path = "output.xlsx"
+    df.to_excel(path, index=False)
+    print(f"✅ Excel saved as {path}")
+    return {"excel_path": path}
+
+# -------------------------
+# BUILD GRAPH
+# -------------------------
+graph = StateGraph(AgentState)
+
+graph.add_node("list_emails", list_outlook_emails)
+graph.add_node("select_email", select_email)
+graph.add_node("digitize", digitize_document)
+graph.add_node("extract", extract_data)
+graph.add_node("excel", generate_excel)
+
+graph.add_edge(START, "list_emails")
+graph.add_edge("list_emails", "select_email")
+
+graph.add_conditional_edges(
+    "select_email",
+    should_digitize,
+    {
+        "digitize": "digitize",
+        "stop": END
+    }
+)
+
+graph.add_edge("digitize", "extract")
+graph.add_edge("extract", "excel")
+graph.add_edge("excel", END)
+
+app = graph.compile()
+
+# -------------------------
+# RUN
+# -------------------------
+if __name__ == "__main__":
+    final_state = app.invoke({})
+    print("\n🎯 FINAL STATE")
+    print(final_state)
+
+        `
+    }
+
+    const getMSFrameworkCode = () => {
+        return `
+# =========================
+# Microsoft Agent Style Flow
+# Email -> Digitize -> Extract -> Excel
+# =========================
+
+import pandas as pd
+
+# -------------------------
+# OUTLOOK SKILL (MOCK)
+# -------------------------
+class OutlookSkill:
+    def list_emails(self):
+        print("📧 Fetching emails from Outlook...")
+        return [
+            {
+                "subject": "KYC Document",
+                "has_attachment": True,
+                "attachment_url": "https://mock/file.pdf"
+            },
+            {
+                "subject": "Random Mail",
+                "has_attachment": False
+            }
+        ]
+
+# -------------------------
+# DIGITIZATION SKILL
+# -------------------------
+class DigitizationSkill:
+    def digitize(self, file_url: str):
+        print("📄 Digitizing document...")
+        return """
+        First Name: John
+        Last Name: Doe
+        Email: john.doe@example.com
+        """
+
+# -------------------------
+# EXTRACTION SKILL
+# -------------------------
+class ExtractionSkill:
+    def extract(self, text: str):
+        print("🧠 Extracting structured data...")
+        return {
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "john.doe@example.com"
+        }
+
+# -------------------------
+# EXCEL SKILL
+# -------------------------
+class ExcelSkill:
+    def generate(self, data: dict):
+        print("📊 Generating Excel file...")
+        df = pd.DataFrame([data])
+        path = "output.xlsx"
+        df.to_excel(path, index=False)
+        print(f"✅ Excel saved as {path}")
+        return path
+
+# -------------------------
+# ORCHESTRATION
+# -------------------------
+def run_agent():
+    outlook = OutlookSkill()
+    digitizer = DigitizationSkill()
+    extractor = ExtractionSkill()
+    excel = ExcelSkill()
+
+    emails = outlook.list_emails()
+
+    for email in emails:
+        if not email["has_attachment"]:
+            print("⏭️ Skipping email (no attachment)")
+            continue
+
+        print("✅ Attachment found → Proceeding")
+
+        text = digitizer.digitize(email["attachment_url"])
+        data = extractor.extract(text)
+        excel.generate(data)
+
+# -------------------------
+# RUN
+# -------------------------
+if __name__ == "__main__":
+    run_agent()
+
+        `
+    }
+
     useEffect(() => {
         if (getAllAPIKeysApi.data) {
             setAPIKeys(getAllAPIKeysApi.data)
@@ -726,7 +966,7 @@ formData.append("openAIApiKey[openAIEmbeddings_0]", "sk-my-openai-2nd-key")`
                             ))}
                         </Tabs>
                     </div>
-                    <div style={{ flex: 20 }}>
+                    {/* <div style={{ flex: 20 }}>
                         <Available permission={'chatflows:update,agentflows:update'}>
                             <Dropdown
                                 name='SelectKey'
@@ -736,21 +976,21 @@ formData.append("openAIApiKey[openAIEmbeddings_0]", "sk-my-openai-2nd-key")`
                                 value={dialogProps.chatflowApiKeyId ?? chatflowApiKeyId ?? 'Choose an API key'}
                             />
                         </Available>
-                    </div>
+                    </div> */}
                 </div>
                 <div style={{ marginTop: 10 }}></div>
                 {codes.map((codeLang, index) => (
                     <TabPanel key={index} value={value} index={index}>
-                        {(codeLang === 'Embed' || codeLang === 'Share Chatbot') && chatflowApiKeyId && (
+                        {/* {(codeLang === 'Embed' || codeLang === 'Share Chatbot') && chatflowApiKeyId && (
                             <>
                                 <p>You cannot use API key while embedding/sharing chatbot.</p>
                                 <p>
                                     Please select <b>&quot;No Authorization&quot;</b> from the dropdown at the top right corner.
                                 </p>
                             </>
-                        )}
-                        {codeLang === 'Embed' && !chatflowApiKeyId && <EmbedChat chatflowid={dialogProps.chatflowid} />}
-                        {codeLang !== 'Embed' && codeLang !== 'Share Chatbot' && codeLang !== 'Configuration' && (
+                        )} */}
+                        {/* {codeLang === 'Embed' && !chatflowApiKeyId && <EmbedChat chatflowid={dialogProps.chatflowid} />} */}
+                        {/* {codeLang !== 'Embed' && codeLang !== 'Share Chatbot' && codeLang !== 'Configuration' && (
                             <>
                                 <CopyBlock
                                     theme={atomOneDark}
@@ -858,8 +1098,8 @@ formData.append("openAIApiKey[openAIEmbeddings_0]", "sk-my-openai-2nd-key")`
                                                                     columns={
                                                                         nodeOverrides[nodeLabel].length > 0
                                                                             ? Object.keys(nodeOverrides[nodeLabel][0]).filter(
-                                                                                  (key) => key !== 'schema'
-                                                                              )
+                                                                                (key) => key !== 'schema'
+                                                                            )
                                                                             : []
                                                                     }
                                                                 />
@@ -883,8 +1123,8 @@ formData.append("openAIApiKey[openAIEmbeddings_0]", "sk-my-openai-2nd-key")`
                                                         ? getConfigCodeWithFormDataWithAuth(codeLang, getConfigApi.data)
                                                         : getConfigCodeWithAuthorization(codeLang, getConfigApi.data)
                                                     : dialogProps.isFormDataRequired
-                                                    ? getConfigCodeWithFormData(codeLang, getConfigApi.data)
-                                                    : getConfigCode(codeLang, getConfigApi.data)
+                                                        ? getConfigCodeWithFormData(codeLang, getConfigApi.data)
+                                                        : getConfigCode(codeLang, getConfigApi.data)
                                             }
                                             language={getLang(codeLang)}
                                             showLineNumbers={false}
@@ -939,10 +1179,47 @@ formData.append("openAIApiKey[openAIEmbeddings_0]", "sk-my-openai-2nd-key")`
                                     </p>
                                 )}
                             </>
-                        )}
-                        {codeLang === 'Share Chatbot' && !chatflowApiKeyId && (
+                        )} */}
+                        {/* {codeLang === 'Share Chatbot' && !chatflowApiKeyId && (
                             <ShareChatbot isSessionMemory={dialogProps.isSessionMemory} isAgentCanvas={dialogProps.isAgentCanvas} />
+                        )} */}
+                        {codeLang === 'LangGraph' && !chatflowApiKeyId && (
+                            <Box sx={{ maxHeight: '55vh', overflow: 'auto', border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
+                                <CopyBlock theme={atomOneDark} text={getLanggraphCode()} language='javascript' showLineNumbers={false} wrapLines />
+                            </Box>
                         )}
+                        {codeLang === 'MS Framework (Semantic Kernel)' && !chatflowApiKeyId && (
+                            <Box sx={{ maxHeight: '60vh', overflow: 'auto', border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
+                                <CopyBlock theme={atomOneDark} text={getMSFrameworkCode()} language='javascript' showLineNumbers={false} wrapLines />
+                            </Box>
+                        )}
+                        <Box sx={{ mt: 3, mb: 2 }}>
+                            <Stack direction='row' spacing={2} alignItems='center'>
+                                <Dropdown
+                                    name='Environment'
+                                    disableClearable={true}
+                                    options={[
+                                        { label: 'Dev', name: 'dev' },
+                                        { label: 'UAT', name: 'uat' },
+                                        { label: 'Prod', name: 'prod' }
+                                    ]}
+                                    onSelect={(newValue) => setSelectedEnvironment(newValue)}
+                                    value={selectedEnvironment}
+                                />
+                                <Button
+                                    variant='contained'
+                                    color='primary'
+                                    onClick={() => {
+                                        console.log(`Deploying to ${selectedEnvironment} environment...`)
+                                        // Dummy deploy functionality
+                                        alert(`Deploying to ${selectedEnvironment.toUpperCase()} environment...`)
+                                    }}
+                                >
+                                    Deploy
+                                </Button>
+                            </Stack>
+                        </Box>
+
                     </TabPanel>
                 ))}
             </DialogContent>

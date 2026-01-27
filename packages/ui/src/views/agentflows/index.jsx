@@ -188,7 +188,7 @@ const Agentflows = () => {
                             exclusive
                             onChange={handleVersionChange}
                         >
-                            <ToggleButton
+                            {/* <ToggleButton
                                 sx={{
                                     borderColor: theme.palette.grey[900] + 25,
                                     borderRadius: 2,
@@ -212,7 +212,7 @@ const Agentflows = () => {
                                 title='V1'
                             >
                                 V1
-                            </ToggleButton>
+                            </ToggleButton> */}
                         </ToggleButtonGroup>
                         <ToggleButtonGroup
                             sx={{ borderRadius: 2, maxHeight: 40 }}

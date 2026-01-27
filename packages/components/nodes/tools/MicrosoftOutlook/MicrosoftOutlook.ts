@@ -24,7 +24,7 @@ class MicrosoftOutlook_Tools implements INode {
         this.description = 'Perform Microsoft Outlook operations for calendars, events, and messages'
         this.baseClasses = [this.type, 'Tool']
         this.credential = {
-            label: 'Connect Credential',
+            label: 'Select Connection',
             name: 'credential',
             type: 'credential',
             credentialNames: ['microsoftOutlookOAuth2']

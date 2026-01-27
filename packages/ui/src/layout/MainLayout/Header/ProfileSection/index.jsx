@@ -486,7 +486,7 @@ const ProfileSection = ({ handleLogout }) => {
                                                     <ListItemText primary={<Typography variant='body2'>Import</Typography>} />
                                                 </PermissionListItemButton>
                                                 <input ref={inputRef} type='file' hidden onChange={fileChange} accept='.json' />
-                                                <ListItemButton
+                                                {/* <ListItemButton
                                                     sx={{ borderRadius: `${customization.borderRadius}px` }}
                                                     onClick={() => {
                                                         setOpen(false)
@@ -497,8 +497,8 @@ const ProfileSection = ({ handleLogout }) => {
                                                         <IconInfoCircle stroke={1.5} size='1.3rem' />
                                                     </ListItemIcon>
                                                     <ListItemText primary={<Typography variant='body2'>Version</Typography>} />
-                                                </ListItemButton>
-                                                {isAuthenticated && !currentUser.isSSO && (
+                                                </ListItemButton> */}
+                                                {/* {isAuthenticated && !currentUser.isSSO && (
                                                     <ListItemButton
                                                         sx={{ borderRadius: `${customization.borderRadius}px` }}
                                                         onClick={() => {
@@ -511,7 +511,7 @@ const ProfileSection = ({ handleLogout }) => {
                                                         </ListItemIcon>
                                                         <ListItemText primary={<Typography variant='body2'>Account Settings</Typography>} />
                                                     </ListItemButton>
-                                                )}
+                                                )} */}
                                                 <ListItemButton
                                                     sx={{ borderRadius: `${customization.borderRadius}px` }}
                                                     onClick={handleLogout}
@@ -530,7 +530,7 @@ const ProfileSection = ({ handleLogout }) => {
                     </Transitions>
                 )}
             </Popper>
-            <AboutDialog show={aboutDialogOpen} onCancel={() => setAboutDialogOpen(false)} />
+            {/* <AboutDialog show={aboutDialogOpen} onCancel={() => setAboutDialogOpen(false)} /> */}
             <ExportDialog show={exportDialogOpen} onCancel={() => setExportDialogOpen(false)} onExport={(data) => onExport(data)} />
             <ImportDialog show={importDialogOpen} />
         </>

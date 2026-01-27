@@ -31,28 +31,28 @@ const agent_settings = {
     title: '',
     type: 'group',
     children: [
-        {
-            id: 'viewMessages',
-            title: 'View Messages',
-            type: 'item',
-            url: '',
-            icon: icons.IconMessage
-        },
-        {
-            id: 'viewLeads',
-            title: 'View Leads',
-            type: 'item',
-            url: '',
-            icon: icons.IconUsers
-        },
-        {
-            id: 'chatflowConfiguration',
-            title: 'Configuration',
-            type: 'item',
-            url: '',
-            icon: icons.IconAdjustmentsHorizontal,
-            permission: 'agentflows:config'
-        },
+        // {
+        //     id: 'viewMessages',
+        //     title: 'View Messages',
+        //     type: 'item',
+        //     url: '',
+        //     icon: icons.IconMessage
+        // },
+        // {
+        //     id: 'viewLeads',
+        //     title: 'View Leads',
+        //     type: 'item',
+        //     url: '',
+        //     icon: icons.IconUsers
+        // },
+        // {
+        //     id: 'chatflowConfiguration',
+        //     title: 'Configuration',
+        //     type: 'item',
+        //     url: '',
+        //     icon: icons.IconAdjustmentsHorizontal,
+        //     permission: 'agentflows:config'
+        // },
         {
             id: 'saveAsTemplate',
             title: 'Save As Template',

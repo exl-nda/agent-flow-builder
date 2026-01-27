@@ -4,6 +4,7 @@ import nodesService from '../../services/nodes'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 import { StatusCodes } from 'http-status-codes'
 import { getWorkspaceSearchOptionsFromReq } from '../../enterprise/utils/ControllerServiceUtils'
+import { INodeOptionsValue } from 'flowise-components'
 
 const getAllNodes = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -70,7 +71,11 @@ const getSingleNodeAsyncOptions = async (req: Request, res: Response, next: Next
         }
         const body = req.body
         body.searchOptions = getWorkspaceSearchOptionsFromReq(req)
-        const apiResponse = await nodesService.getSingleNodeAsyncOptions(req.params.name, body)
+        let apiResponse = await nodesService.getSingleNodeAsyncOptions(req.params.name, body)
+        const disabled_tools = process.env.DISABLED_TOOLS
+            ? process.env.DISABLED_TOOLS.split(',').map(c => c.trim())
+            : []
+        apiResponse = apiResponse.filter((node: INodeOptionsValue) => !disabled_tools.includes(node.name))
         return res.json(apiResponse)
     } catch (error) {
         next(error)

@@ -1,5 +1,6 @@
 import logo from '@/assets/images/flowise_white.svg'
 import logoDark from '@/assets/images/flowise_dark.svg'
+import logoMcKesson from '@/assets/images/MckLogo.svg'
 
 import { useSelector } from 'react-redux'
 
@@ -11,8 +12,8 @@ const Logo = () => {
     return (
         <div style={{ alignItems: 'center', display: 'flex', flexDirection: 'row', marginLeft: '10px' }}>
             <img
-                style={{ objectFit: 'contain', height: 'auto', width: 150 }}
-                src={customization.isDarkMode ? logoDark : logo}
+                style={{ objectFit: 'contain', height: 48, width: 'auto', borderRadius: 16 }}
+                src={customization.isDarkMode ? logoMcKesson : logoMcKesson}
                 alt='Flowise'
             />
         </div>

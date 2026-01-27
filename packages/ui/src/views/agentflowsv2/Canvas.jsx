@@ -776,7 +776,7 @@ const AgentflowCanvas = () => {
                                     dialogProps={editNodeDialogProps}
                                     onCancel={() => setEditNodeDialogOpen(false)}
                                 />
-                                {isSyncNodesButtonEnabled && (
+                                {/* {isSyncNodesButtonEnabled && (
                                     <Fab
                                         sx={{
                                             left: 60,
@@ -795,9 +795,9 @@ const AgentflowCanvas = () => {
                                     >
                                         <IconRefreshAlert />
                                     </Fab>
-                                )}
-                                <ChatPopUp isAgentCanvas={true} chatflowid={chatflowId} onOpenChange={setChatPopupOpen} />
-                                {!chatPopupOpen && <ValidationPopUp isAgentCanvas={true} chatflowid={chatflowId} />}
+                                )} */}
+                                {/* <ChatPopUp isAgentCanvas={true} chatflowid={chatflowId} onOpenChange={setChatPopupOpen} />
+                                {!chatPopupOpen && <ValidationPopUp isAgentCanvas={true} chatflowid={chatflowId} />} */}
                             </ReactFlow>
                         </div>
                     </div>
