@@ -66,15 +66,15 @@ const dashboard = {
             title: '',
             type: 'group',
             children: [
-                // {
-                //     id: 'chatflows',
-                //     title: 'Chatflows',
-                //     type: 'item',
-                //     url: '/chatflows',
-                //     icon: icons.IconHierarchy,
-                //     breadcrumbs: true,
-                //     permission: 'chatflows:view'
-                // },
+                {
+                    id: 'chatflows',
+                    title: 'Chatflows',
+                    type: 'item',
+                    url: '/chatflows',
+                    icon: icons.IconHierarchy,
+                    breadcrumbs: true,
+                    permission: 'chatflows:view'
+                },
                 {
                     id: 'agentflows',
                     title: 'Agentflows',
@@ -129,15 +129,15 @@ const dashboard = {
                     breadcrumbs: true,
                     permission: 'credentials:view'
                 },
-                // {
-                //     id: 'variables',
-                //     title: 'Variables',
-                //     type: 'item',
-                //     url: '/variables',
-                //     icon: icons.IconVariable,
-                //     breadcrumbs: true,
-                //     permission: 'variables:view'
-                // },
+                {
+                    id: 'variables',
+                    title: 'Variables',
+                    type: 'item',
+                    url: '/variables',
+                    icon: icons.IconVariable,
+                    breadcrumbs: true,
+                    permission: 'variables:view'
+                },
                 // {
                 //     id: 'apikey',
                 //     title: 'API Keys',
