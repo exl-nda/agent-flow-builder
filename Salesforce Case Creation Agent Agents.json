@@ -1,0 +1,2531 @@
+{
+  "nodes": [
+    {
+      "id": "startAgentflow_0",
+      "type": "agentFlow",
+      "position": {
+        "x": -581.8790266469389,
+        "y": 79.2637114011136
+      },
+      "data": {
+        "id": "startAgentflow_0",
+        "label": "Start",
+        "version": 1.1,
+        "name": "startAgentflow",
+        "type": "Start",
+        "color": "#7EE787",
+        "hideInput": true,
+        "baseClasses": [
+          "Start"
+        ],
+        "category": "Agent Flows",
+        "description": "Starting point of the agentflow",
+        "inputParams": [
+          {
+            "label": "Input Type",
+            "name": "startInputType",
+            "type": "options",
+            "options": [
+              {
+                "label": "Chat Input",
+                "name": "chatInput",
+                "description": "Start the conversation with chat input"
+              },
+              {
+                "label": "Form Input",
+                "name": "formInput",
+                "description": "Start the workflow with form inputs"
+              }
+            ],
+            "default": "chatInput",
+            "id": "startAgentflow_0-input-startInputType-options",
+            "display": true
+          },
+          {
+            "label": "Form Title",
+            "name": "formTitle",
+            "type": "string",
+            "placeholder": "Please Fill Out The Form",
+            "show": {
+              "startInputType": "formInput"
+            },
+            "id": "startAgentflow_0-input-formTitle-string",
+            "display": false
+          },
+          {
+            "label": "Form Description",
+            "name": "formDescription",
+            "type": "string",
+            "placeholder": "Complete all fields below to continue",
+            "show": {
+              "startInputType": "formInput"
+            },
+            "id": "startAgentflow_0-input-formDescription-string",
+            "display": false
+          },
+          {
+            "label": "Form Input Types",
+            "name": "formInputTypes",
+            "description": "Specify the type of form input",
+            "type": "array",
+            "show": {
+              "startInputType": "formInput"
+            },
+            "array": [
+              {
+                "label": "Type",
+                "name": "type",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "String",
+                    "name": "string"
+                  },
+                  {
+                    "label": "Number",
+                    "name": "number"
+                  },
+                  {
+                    "label": "Boolean",
+                    "name": "boolean"
+                  },
+                  {
+                    "label": "Options",
+                    "name": "options"
+                  }
+                ],
+                "default": "string"
+              },
+              {
+                "label": "Label",
+                "name": "label",
+                "type": "string",
+                "placeholder": "Label for the input"
+              },
+              {
+                "label": "Variable Name",
+                "name": "name",
+                "type": "string",
+                "placeholder": "Variable name for the input (must be camel case)",
+                "description": "Variable name must be camel case. For example: firstName, lastName, etc."
+              },
+              {
+                "label": "Add Options",
+                "name": "addOptions",
+                "type": "array",
+                "show": {
+                  "formInputTypes[$index].type": "options"
+                },
+                "array": [
+                  {
+                    "label": "Option",
+                    "name": "option",
+                    "type": "string"
+                  }
+                ]
+              }
+            ],
+            "id": "startAgentflow_0-input-formInputTypes-array",
+            "display": false
+          },
+          {
+            "label": "Ephemeral Memory",
+            "name": "startEphemeralMemory",
+            "type": "boolean",
+            "description": "Start fresh for every execution without past chat history",
+            "optional": true,
+            "id": "startAgentflow_0-input-startEphemeralMemory-boolean",
+            "display": true
+          },
+          {
+            "label": "Flow State",
+            "name": "startState",
+            "description": "Runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "string",
+                "placeholder": "Foo"
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "placeholder": "Bar",
+                "optional": true
+              }
+            ],
+            "id": "startAgentflow_0-input-startState-array",
+            "display": true
+          },
+          {
+            "label": "Persist State",
+            "name": "startPersistState",
+            "type": "boolean",
+            "description": "Persist the state in the same session",
+            "optional": true,
+            "id": "startAgentflow_0-input-startPersistState-boolean",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "startInputType": "chatInput",
+          "formTitle": "",
+          "formDescription": "",
+          "formInputTypes": "",
+          "startEphemeralMemory": "",
+          "startState": "",
+          "startPersistState": ""
+        },
+        "outputAnchors": [
+          {
+            "id": "startAgentflow_0-output-startAgentflow",
+            "label": "Start",
+            "name": "startAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "width": 103,
+      "height": 66,
+      "selected": false,
+      "positionAbsolute": {
+        "x": -581.8790266469389,
+        "y": 79.2637114011136
+      },
+      "dragging": false
+    },
+    {
+      "id": "toolAgentflow_0",
+      "position": {
+        "x": -390.9702143467575,
+        "y": 79.11512776004255
+      },
+      "data": {
+        "id": "toolAgentflow_0",
+        "label": "Outlook",
+        "version": 1.2,
+        "name": "toolAgentflow",
+        "type": "Tool",
+        "color": "#d4a373",
+        "baseClasses": [
+          "Tool"
+        ],
+        "category": "Agent Flows",
+        "description": "Tools allow LLM to interact with external systems",
+        "inputParams": [
+          {
+            "label": "Tool",
+            "name": "toolAgentflowSelectedTool",
+            "type": "asyncOptions",
+            "loadMethod": "listTools",
+            "loadConfig": true,
+            "id": "toolAgentflow_0-input-toolAgentflowSelectedTool-asyncOptions",
+            "display": true
+          },
+          {
+            "label": "Tool Input Arguments",
+            "name": "toolInputArgs",
+            "type": "array",
+            "acceptVariable": true,
+            "refresh": true,
+            "array": [
+              {
+                "label": "Input Argument Name",
+                "name": "inputArgName",
+                "type": "asyncOptions",
+                "loadMethod": "listToolInputArgs",
+                "refresh": true
+              },
+              {
+                "label": "Input Argument Value",
+                "name": "inputArgValue",
+                "type": "string",
+                "acceptVariable": true
+              }
+            ],
+            "show": {
+              "toolAgentflowSelectedTool": ".+"
+            },
+            "id": "toolAgentflow_0-input-toolInputArgs-array",
+            "display": true
+          },
+          {
+            "label": "Update Flow State",
+            "name": "toolUpdateState",
+            "description": "Update runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "asyncOptions",
+                "loadMethod": "listRuntimeStateKeys"
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "acceptVariable": true,
+                "acceptNodeOutputAsVariable": true
+              }
+            ],
+            "id": "toolAgentflow_0-input-toolUpdateState-array",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "toolAgentflowSelectedTool": "microsoftOutlook",
+          "toolInputArgs": [
+            {
+              "inputArgName": "maxResults",
+              "inputArgValue": "<p>5</p>"
+            }
+          ],
+          "toolUpdateState": "",
+          "toolAgentflowSelectedToolConfig": {
+            "credential": "",
+            "outlookType": "",
+            "calendarActions": "",
+            "messageActions": "",
+            "maxResultsListCalendars": 50,
+            "calendarIdGetCalendar": "",
+            "calendarNameCreateCalendar": "",
+            "calendarIdUpdateCalendar": "",
+            "calendarNameUpdateCalendar": "",
+            "calendarIdDeleteCalendar": "",
+            "calendarIdListEvents": "",
+            "maxResultsListEvents": 50,
+            "startDateTimeListEvents": "",
+            "endDateTimeListEvents": "",
+            "eventIdGetEvent": "",
+            "subjectCreateEvent": "",
+            "bodyCreateEvent": "",
+            "startDateTimeCreateEvent": "",
+            "endDateTimeCreateEvent": "",
+            "timeZoneCreateEvent": "UTC",
+            "locationCreateEvent": "",
+            "attendeesCreateEvent": "",
+            "eventIdUpdateEvent": "",
+            "subjectUpdateEvent": "",
+            "eventIdDeleteEvent": "",
+            "maxResultsListMessages": 50,
+            "filterListMessages": "",
+            "messageIdGetMessage": "",
+            "toCreateDraftMessage": "",
+            "subjectCreateDraftMessage": "",
+            "bodyCreateDraftMessage": "",
+            "ccCreateDraftMessage": "",
+            "bccCreateDraftMessage": "",
+            "toSendMessage": "",
+            "subjectSendMessage": "",
+            "bodySendMessage": "",
+            "messageIdUpdateMessage": "",
+            "isReadUpdateMessage": "",
+            "messageIdDeleteMessage": "",
+            "messageIdCopyMessage": "",
+            "destinationFolderIdCopyMessage": "",
+            "messageIdMoveMessage": "",
+            "destinationFolderIdMoveMessage": "",
+            "messageIdReplyMessage": "",
+            "replyBodyReplyMessage": "",
+            "messageIdForwardMessage": "",
+            "forwardToForwardMessage": "",
+            "forwardCommentForwardMessage": "",
+            "toolAgentflowSelectedTool": "microsoftOutlook"
+          }
+        },
+        "outputAnchors": [
+          {
+            "id": "toolAgentflow_0-output-toolAgentflow",
+            "label": "Tool",
+            "name": "toolAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 123,
+      "height": 68,
+      "selected": false,
+      "positionAbsolute": {
+        "x": -390.9702143467575,
+        "y": 79.11512776004255
+      },
+      "dragging": false
+    },
+    {
+      "id": "llmAgentflow_0",
+      "position": {
+        "x": -166.30049550309536,
+        "y": 78.29485976585133
+      },
+      "data": {
+        "id": "llmAgentflow_0",
+        "label": "Intake Agent LLM",
+        "version": 1.1,
+        "name": "llmAgentflow",
+        "type": "LLM",
+        "color": "#64B5F6",
+        "baseClasses": [
+          "LLM"
+        ],
+        "category": "Agent Flows",
+        "description": "Large language models to analyze user-provided inputs and generate responses",
+        "inputParams": [
+          {
+            "label": "Model",
+            "name": "llmModel",
+            "type": "asyncOptions",
+            "loadMethod": "listModels",
+            "loadConfig": true,
+            "id": "llmAgentflow_0-input-llmModel-asyncOptions",
+            "display": true
+          },
+          {
+            "label": "Messages",
+            "name": "llmMessages",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Role",
+                "name": "role",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "System",
+                    "name": "system"
+                  },
+                  {
+                    "label": "Assistant",
+                    "name": "assistant"
+                  },
+                  {
+                    "label": "Developer",
+                    "name": "developer"
+                  },
+                  {
+                    "label": "User",
+                    "name": "user"
+                  }
+                ]
+              },
+              {
+                "label": "Content",
+                "name": "content",
+                "type": "string",
+                "acceptVariable": true,
+                "generateInstruction": true,
+                "rows": 4
+              }
+            ],
+            "id": "llmAgentflow_0-input-llmMessages-array",
+            "display": true
+          },
+          {
+            "label": "Enable Memory",
+            "name": "llmEnableMemory",
+            "type": "boolean",
+            "description": "Enable memory for the conversation thread",
+            "default": true,
+            "optional": true,
+            "id": "llmAgentflow_0-input-llmEnableMemory-boolean",
+            "display": true
+          },
+          {
+            "label": "Memory Type",
+            "name": "llmMemoryType",
+            "type": "options",
+            "options": [
+              {
+                "label": "All Messages",
+                "name": "allMessages",
+                "description": "Retrieve all messages from the conversation"
+              },
+              {
+                "label": "Window Size",
+                "name": "windowSize",
+                "description": "Uses a fixed window size to surface the last N messages"
+              },
+              {
+                "label": "Conversation Summary",
+                "name": "conversationSummary",
+                "description": "Summarizes the whole conversation"
+              },
+              {
+                "label": "Conversation Summary Buffer",
+                "name": "conversationSummaryBuffer",
+                "description": "Summarize conversations once token limit is reached. Default to 2000"
+              }
+            ],
+            "optional": true,
+            "default": "allMessages",
+            "show": {
+              "llmEnableMemory": true
+            },
+            "id": "llmAgentflow_0-input-llmMemoryType-options",
+            "display": true
+          },
+          {
+            "label": "Window Size",
+            "name": "llmMemoryWindowSize",
+            "type": "number",
+            "default": "20",
+            "description": "Uses a fixed window size to surface the last N messages",
+            "show": {
+              "llmMemoryType": "windowSize"
+            },
+            "id": "llmAgentflow_0-input-llmMemoryWindowSize-number",
+            "display": false
+          },
+          {
+            "label": "Max Token Limit",
+            "name": "llmMemoryMaxTokenLimit",
+            "type": "number",
+            "default": "2000",
+            "description": "Summarize conversations once token limit is reached. Default to 2000",
+            "show": {
+              "llmMemoryType": "conversationSummaryBuffer"
+            },
+            "id": "llmAgentflow_0-input-llmMemoryMaxTokenLimit-number",
+            "display": false
+          },
+          {
+            "label": "Input Message",
+            "name": "llmUserMessage",
+            "type": "string",
+            "description": "Add an input message as user message at the end of the conversation",
+            "rows": 4,
+            "optional": true,
+            "acceptVariable": true,
+            "show": {
+              "llmEnableMemory": true
+            },
+            "id": "llmAgentflow_0-input-llmUserMessage-string",
+            "display": true
+          },
+          {
+            "label": "Return Response As",
+            "name": "llmReturnResponseAs",
+            "type": "options",
+            "options": [
+              {
+                "label": "User Message",
+                "name": "userMessage"
+              },
+              {
+                "label": "Assistant Message",
+                "name": "assistantMessage"
+              }
+            ],
+            "default": "userMessage",
+            "id": "llmAgentflow_0-input-llmReturnResponseAs-options",
+            "display": true
+          },
+          {
+            "label": "JSON Structured Output",
+            "name": "llmStructuredOutput",
+            "description": "Instruct the LLM to give output in a JSON structured schema",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "string"
+              },
+              {
+                "label": "Type",
+                "name": "type",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "String",
+                    "name": "string"
+                  },
+                  {
+                    "label": "String Array",
+                    "name": "stringArray"
+                  },
+                  {
+                    "label": "Number",
+                    "name": "number"
+                  },
+                  {
+                    "label": "Boolean",
+                    "name": "boolean"
+                  },
+                  {
+                    "label": "Enum",
+                    "name": "enum"
+                  },
+                  {
+                    "label": "JSON Array",
+                    "name": "jsonArray"
+                  }
+                ]
+              },
+              {
+                "label": "Enum Values",
+                "name": "enumValues",
+                "type": "string",
+                "placeholder": "value1, value2, value3",
+                "description": "Enum values. Separated by comma",
+                "optional": true,
+                "show": {
+                  "llmStructuredOutput[$index].type": "enum"
+                }
+              },
+              {
+                "label": "JSON Schema",
+                "name": "jsonSchema",
+                "type": "code",
+                "placeholder": "{\n    \"answer\": {\n        \"type\": \"string\",\n        \"description\": \"Value of the answer\"\n    },\n    \"reason\": {\n        \"type\": \"string\",\n        \"description\": \"Reason for the answer\"\n    },\n    \"optional\": {\n        \"type\": \"boolean\"\n    },\n    \"count\": {\n        \"type\": \"number\"\n    },\n    \"children\": {\n        \"type\": \"array\",\n        \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"value\": {\n                    \"type\": \"string\",\n                    \"description\": \"Value of the children's answer\"\n                }\n            }\n        }\n    }\n}",
+                "description": "JSON schema for the structured output",
+                "optional": true,
+                "hideCodeExecute": true,
+                "show": {
+                  "llmStructuredOutput[$index].type": "jsonArray"
+                }
+              },
+              {
+                "label": "Description",
+                "name": "description",
+                "type": "string",
+                "placeholder": "Description of the key"
+              }
+            ],
+            "id": "llmAgentflow_0-input-llmStructuredOutput-array",
+            "display": true
+          },
+          {
+            "label": "Update Flow State",
+            "name": "llmUpdateState",
+            "description": "Update runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "asyncOptions",
+                "loadMethod": "listRuntimeStateKeys"
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "acceptVariable": true,
+                "acceptNodeOutputAsVariable": true
+              }
+            ],
+            "id": "llmAgentflow_0-input-llmUpdateState-array",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "llmModel": "chatOpenAI",
+          "llmMessages": "",
+          "llmEnableMemory": true,
+          "llmMemoryType": "allMessages",
+          "llmUserMessage": "",
+          "llmReturnResponseAs": "userMessage",
+          "llmStructuredOutput": "",
+          "llmUpdateState": "",
+          "llmModelConfig": {
+            "cache": "",
+            "modelName": "gpt-4o-mini",
+            "temperature": 0.9,
+            "streaming": true,
+            "maxTokens": "",
+            "topP": "",
+            "frequencyPenalty": "",
+            "presencePenalty": "",
+            "timeout": "",
+            "strictToolCalling": "",
+            "stopSequence": "",
+            "basepath": "",
+            "proxyUrl": "",
+            "baseOptions": "",
+            "allowImageUploads": "",
+            "imageResolution": "low",
+            "reasoning": "",
+            "reasoningEffort": "",
+            "reasoningSummary": "",
+            "llmModel": "chatOpenAI"
+          }
+        },
+        "outputAnchors": [
+          {
+            "id": "llmAgentflow_0-output-llmAgentflow",
+            "label": "LLM",
+            "name": "llmAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 185,
+      "height": 72,
+      "selected": false,
+      "dragging": false,
+      "positionAbsolute": {
+        "x": -166.30049550309536,
+        "y": 78.29485976585133
+      }
+    },
+    {
+      "id": "conditionAgentAgentflow_0",
+      "position": {
+        "x": 94.95759987464297,
+        "y": 74.11655718700311
+      },
+      "data": {
+        "id": "conditionAgentAgentflow_0",
+        "label": "Validation Agent ",
+        "version": 1.1,
+        "name": "conditionAgentAgentflow",
+        "type": "ConditionAgent",
+        "color": "#ff8fab",
+        "baseClasses": [
+          "ConditionAgent"
+        ],
+        "category": "Agent Flows",
+        "description": "Utilize an agent to split flows based on dynamic conditions",
+        "inputParams": [
+          {
+            "label": "Model",
+            "name": "conditionAgentModel",
+            "type": "asyncOptions",
+            "loadMethod": "listModels",
+            "loadConfig": true,
+            "id": "conditionAgentAgentflow_0-input-conditionAgentModel-asyncOptions",
+            "display": true
+          },
+          {
+            "label": "Instructions",
+            "name": "conditionAgentInstructions",
+            "type": "string",
+            "description": "A general instructions of what the condition agent should do",
+            "rows": 4,
+            "acceptVariable": true,
+            "placeholder": "Determine if the user is interested in learning about AI",
+            "id": "conditionAgentAgentflow_0-input-conditionAgentInstructions-string",
+            "display": true
+          },
+          {
+            "label": "Input",
+            "name": "conditionAgentInput",
+            "type": "string",
+            "description": "Input to be used for the condition agent",
+            "rows": 4,
+            "acceptVariable": true,
+            "default": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"question\" data-label=\"question\">{{ question }}</span> </p>",
+            "id": "conditionAgentAgentflow_0-input-conditionAgentInput-string",
+            "display": true
+          },
+          {
+            "label": "Scenarios",
+            "name": "conditionAgentScenarios",
+            "description": "Define the scenarios that will be used as the conditions to split the flow",
+            "type": "array",
+            "array": [
+              {
+                "label": "Scenario",
+                "name": "scenario",
+                "type": "string",
+                "placeholder": "User is asking for a pizza"
+              }
+            ],
+            "default": [
+              {
+                "scenario": ""
+              },
+              {
+                "scenario": ""
+              }
+            ],
+            "id": "conditionAgentAgentflow_0-input-conditionAgentScenarios-array",
+            "display": true
+          },
+          {
+            "label": "Override System Prompt",
+            "name": "conditionAgentOverrideSystemPrompt",
+            "type": "boolean",
+            "description": "Override initial system prompt for Condition Agent",
+            "optional": true,
+            "id": "conditionAgentAgentflow_0-input-conditionAgentOverrideSystemPrompt-boolean",
+            "display": true
+          },
+          {
+            "label": "Node System Prompt",
+            "name": "conditionAgentSystemPrompt",
+            "type": "string",
+            "rows": 4,
+            "optional": true,
+            "acceptVariable": true,
+            "default": "<p>You are part of a multi-agent system designed to make agent coordination and execution easy. Your task is to analyze the given input and select one matching scenario from a provided set of scenarios.</p>\n    <ul>\n        <li><strong>Input</strong>: A string representing the user's query, message or data.</li>\n        <li><strong>Scenarios</strong>: A list of predefined scenarios that relate to the input.</li>\n        <li><strong>Instruction</strong>: Determine which of the provided scenarios is the best fit for the input.</li>\n    </ul>\n    <h2>Steps</h2>\n    <ol>\n        <li><strong>Read the input string</strong> and the list of scenarios.</li>\n        <li><strong>Analyze the content of the input</strong> to identify its main topic or intention.</li>\n        <li><strong>Compare the input with each scenario</strong>: Evaluate how well the input's topic or intention aligns with each of the provided scenarios and select the one that is the best fit.</li>\n        <li><strong>Output the result</strong>: Return the selected scenario in the specified JSON format.</li>\n    </ol>\n    <h2>Output Format</h2>\n    <p>Output should be a JSON object that names the selected scenario, like this: <code>{\"output\": \"<selected_scenario_name>\"}</code>. No explanation is needed.</p>\n    <h2>Examples</h2>\n    <ol>\n       <li>\n            <p><strong>Input</strong>: <code>{\"input\": \"Hello\", \"scenarios\": [\"user is asking about AI\", \"user is not asking about AI\"], \"instruction\": \"Your task is to check if the user is asking about AI.\"}</code></p>\n            <p><strong>Output</strong>: <code>{\"output\": \"user is not asking about AI\"}</code></p>\n        </li>\n        <li>\n            <p><strong>Input</strong>: <code>{\"input\": \"What is AIGC?\", \"scenarios\": [\"user is asking about AI\", \"user is asking about the weather\"], \"instruction\": \"Your task is to check and see if the user is asking a topic about AI.\"}</code></p>\n            <p><strong>Output</strong>: <code>{\"output\": \"user is asking about AI\"}</code></p>\n        </li>\n        <li>\n            <p><strong>Input</strong>: <code>{\"input\": \"Can you explain deep learning?\", \"scenarios\": [\"user is interested in AI topics\", \"user wants to order food\"], \"instruction\": \"Determine if the user is interested in learning about AI.\"}</code></p>\n            <p><strong>Output</strong>: <code>{\"output\": \"user is interested in AI topics\"}</code></p>\n        </li>\n    </ol>\n    <h2>Note</h2>\n    <ul>\n        <li>Ensure that the input scenarios align well with potential user queries for accurate matching.</li>\n        <li>DO NOT include anything other than the JSON in your response.</li>\n    </ul>",
+            "description": "Expert use only. Modifying this can significantly alter agent behavior. Leave default if unsure",
+            "show": {
+              "conditionAgentOverrideSystemPrompt": true
+            },
+            "id": "conditionAgentAgentflow_0-input-conditionAgentSystemPrompt-string",
+            "display": false
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "conditionAgentModel": "",
+          "conditionAgentInstructions": "",
+          "conditionAgentInput": "<p><span class=\"variable\" data-type=\"mention\" data-id=\"question\" data-label=\"question\">{{ question }}</span> </p>",
+          "conditionAgentScenarios": [
+            {
+              "scenario": ""
+            },
+            {
+              "scenario": ""
+            }
+          ],
+          "conditionAgentOverrideSystemPrompt": "",
+          "conditionAgentSystemPrompt": "<p>You are part of a multi-agent system designed to make agent coordination and execution easy. Your task is to analyze the given input and select one matching scenario from a provided set of scenarios.</p>\n    <ul>\n        <li><strong>Input</strong>: A string representing the user's query, message or data.</li>\n        <li><strong>Scenarios</strong>: A list of predefined scenarios that relate to the input.</li>\n        <li><strong>Instruction</strong>: Determine which of the provided scenarios is the best fit for the input.</li>\n    </ul>\n    <h2>Steps</h2>\n    <ol>\n        <li><strong>Read the input string</strong> and the list of scenarios.</li>\n        <li><strong>Analyze the content of the input</strong> to identify its main topic or intention.</li>\n        <li><strong>Compare the input with each scenario</strong>: Evaluate how well the input's topic or intention aligns with each of the provided scenarios and select the one that is the best fit.</li>\n        <li><strong>Output the result</strong>: Return the selected scenario in the specified JSON format.</li>\n    </ol>\n    <h2>Output Format</h2>\n    <p>Output should be a JSON object that names the selected scenario, like this: <code>{\"output\": \"<selected_scenario_name>\"}</code>. No explanation is needed.</p>\n    <h2>Examples</h2>\n    <ol>\n       <li>\n            <p><strong>Input</strong>: <code>{\"input\": \"Hello\", \"scenarios\": [\"user is asking about AI\", \"user is not asking about AI\"], \"instruction\": \"Your task is to check if the user is asking about AI.\"}</code></p>\n            <p><strong>Output</strong>: <code>{\"output\": \"user is not asking about AI\"}</code></p>\n        </li>\n        <li>\n            <p><strong>Input</strong>: <code>{\"input\": \"What is AIGC?\", \"scenarios\": [\"user is asking about AI\", \"user is asking about the weather\"], \"instruction\": \"Your task is to check and see if the user is asking a topic about AI.\"}</code></p>\n            <p><strong>Output</strong>: <code>{\"output\": \"user is asking about AI\"}</code></p>\n        </li>\n        <li>\n            <p><strong>Input</strong>: <code>{\"input\": \"Can you explain deep learning?\", \"scenarios\": [\"user is interested in AI topics\", \"user wants to order food\"], \"instruction\": \"Determine if the user is interested in learning about AI.\"}</code></p>\n            <p><strong>Output</strong>: <code>{\"output\": \"user is interested in AI topics\"}</code></p>\n        </li>\n    </ol>\n    <h2>Note</h2>\n    <ul>\n        <li>Ensure that the input scenarios align well with potential user queries for accurate matching.</li>\n        <li>DO NOT include anything other than the JSON in your response.</li>\n    </ul>"
+        },
+        "outputAnchors": [
+          {
+            "id": "conditionAgentAgentflow_0-output-0",
+            "label": "Condition Agent",
+            "name": "conditionAgentAgentflow"
+          },
+          {
+            "id": "conditionAgentAgentflow_0-output-1",
+            "label": "Condition Agent",
+            "name": "conditionAgentAgentflow"
+          }
+        ],
+        "outputs": {
+          "conditionAgentAgentflow": ""
+        },
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 178,
+      "height": 80,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 94.95759987464297,
+        "y": 74.11655718700311
+      },
+      "dragging": false
+    },
+    {
+      "id": "executeFlowAgentflow_0",
+      "position": {
+        "x": 536.5557582821389,
+        "y": 94.79351292828906
+      },
+      "data": {
+        "id": "executeFlowAgentflow_0",
+        "label": "Salesforce Identity Agent",
+        "version": 1.2,
+        "name": "executeFlowAgentflow",
+        "type": "ExecuteFlow",
+        "color": "#a3b18a",
+        "baseClasses": [
+          "ExecuteFlow"
+        ],
+        "category": "Agent Flows",
+        "description": "Execute another flow",
+        "inputParams": [
+          {
+            "label": "Connect Credential",
+            "name": "credential",
+            "type": "credential",
+            "credentialNames": [
+              "chatflowApi"
+            ],
+            "optional": true,
+            "id": "executeFlowAgentflow_0-input-credential-credential",
+            "display": true
+          },
+          {
+            "label": "Select Flow",
+            "name": "executeFlowSelectedFlow",
+            "type": "asyncOptions",
+            "loadMethod": "listFlows",
+            "id": "executeFlowAgentflow_0-input-executeFlowSelectedFlow-asyncOptions",
+            "display": true
+          },
+          {
+            "label": "Input",
+            "name": "executeFlowInput",
+            "type": "string",
+            "rows": 4,
+            "acceptVariable": true,
+            "id": "executeFlowAgentflow_0-input-executeFlowInput-string",
+            "display": true
+          },
+          {
+            "label": "Override Config",
+            "name": "executeFlowOverrideConfig",
+            "description": "Override the config passed to the flow",
+            "type": "json",
+            "optional": true,
+            "acceptVariable": true,
+            "id": "executeFlowAgentflow_0-input-executeFlowOverrideConfig-json",
+            "display": true
+          },
+          {
+            "label": "Base URL",
+            "name": "executeFlowBaseURL",
+            "type": "string",
+            "description": "Base URL to Flowise. By default, it is the URL of the incoming request. Useful when you need to execute flow through an alternative route.",
+            "placeholder": "http://localhost:3000",
+            "optional": true,
+            "id": "executeFlowAgentflow_0-input-executeFlowBaseURL-string",
+            "display": true
+          },
+          {
+            "label": "Return Response As",
+            "name": "executeFlowReturnResponseAs",
+            "type": "options",
+            "options": [
+              {
+                "label": "User Message",
+                "name": "userMessage"
+              },
+              {
+                "label": "Assistant Message",
+                "name": "assistantMessage"
+              }
+            ],
+            "default": "userMessage",
+            "id": "executeFlowAgentflow_0-input-executeFlowReturnResponseAs-options",
+            "display": true
+          },
+          {
+            "label": "Update Flow State",
+            "name": "executeFlowUpdateState",
+            "description": "Update runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "asyncOptions",
+                "loadMethod": "listRuntimeStateKeys"
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "acceptVariable": true,
+                "acceptNodeOutputAsVariable": true
+              }
+            ],
+            "id": "executeFlowAgentflow_0-input-executeFlowUpdateState-array",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "executeFlowSelectedFlow": "",
+          "executeFlowInput": "",
+          "executeFlowOverrideConfig": "",
+          "executeFlowBaseURL": "",
+          "executeFlowReturnResponseAs": "userMessage",
+          "executeFlowUpdateState": "",
+          "undefined": ""
+        },
+        "outputAnchors": [
+          {
+            "id": "executeFlowAgentflow_0-output-executeFlowAgentflow",
+            "label": "Execute Flow",
+            "name": "executeFlowAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 236,
+      "height": 66,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 536.5557582821389,
+        "y": 94.79351292828906
+      },
+      "dragging": false
+    },
+    {
+      "id": "executeFlowAgentflow_1",
+      "position": {
+        "x": 833.7566859607864,
+        "y": 163.63131900462014
+      },
+      "data": {
+        "id": "executeFlowAgentflow_1",
+        "label": "Approval Agent",
+        "version": 1.2,
+        "name": "executeFlowAgentflow",
+        "type": "ExecuteFlow",
+        "color": "#a3b18a",
+        "baseClasses": [
+          "ExecuteFlow"
+        ],
+        "category": "Agent Flows",
+        "description": "Execute another flow",
+        "inputParams": [
+          {
+            "label": "Connect Credential",
+            "name": "credential",
+            "type": "credential",
+            "credentialNames": [
+              "chatflowApi"
+            ],
+            "optional": true,
+            "id": "executeFlowAgentflow_1-input-credential-credential",
+            "display": true
+          },
+          {
+            "label": "Select Flow",
+            "name": "executeFlowSelectedFlow",
+            "type": "asyncOptions",
+            "loadMethod": "listFlows",
+            "id": "executeFlowAgentflow_1-input-executeFlowSelectedFlow-asyncOptions",
+            "display": true
+          },
+          {
+            "label": "Input",
+            "name": "executeFlowInput",
+            "type": "string",
+            "rows": 4,
+            "acceptVariable": true,
+            "id": "executeFlowAgentflow_1-input-executeFlowInput-string",
+            "display": true
+          },
+          {
+            "label": "Override Config",
+            "name": "executeFlowOverrideConfig",
+            "description": "Override the config passed to the flow",
+            "type": "json",
+            "optional": true,
+            "acceptVariable": true,
+            "id": "executeFlowAgentflow_1-input-executeFlowOverrideConfig-json",
+            "display": true
+          },
+          {
+            "label": "Base URL",
+            "name": "executeFlowBaseURL",
+            "type": "string",
+            "description": "Base URL to Flowise. By default, it is the URL of the incoming request. Useful when you need to execute flow through an alternative route.",
+            "placeholder": "http://localhost:3000",
+            "optional": true,
+            "id": "executeFlowAgentflow_1-input-executeFlowBaseURL-string",
+            "display": true
+          },
+          {
+            "label": "Return Response As",
+            "name": "executeFlowReturnResponseAs",
+            "type": "options",
+            "options": [
+              {
+                "label": "User Message",
+                "name": "userMessage"
+              },
+              {
+                "label": "Assistant Message",
+                "name": "assistantMessage"
+              }
+            ],
+            "default": "userMessage",
+            "id": "executeFlowAgentflow_1-input-executeFlowReturnResponseAs-options",
+            "display": true
+          },
+          {
+            "label": "Update Flow State",
+            "name": "executeFlowUpdateState",
+            "description": "Update runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "asyncOptions",
+                "loadMethod": "listRuntimeStateKeys"
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "acceptVariable": true,
+                "acceptNodeOutputAsVariable": true
+              }
+            ],
+            "id": "executeFlowAgentflow_1-input-executeFlowUpdateState-array",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "executeFlowSelectedFlow": "",
+          "executeFlowInput": "",
+          "executeFlowOverrideConfig": "",
+          "executeFlowBaseURL": "",
+          "executeFlowReturnResponseAs": "userMessage",
+          "executeFlowUpdateState": "",
+          "undefined": ""
+        },
+        "outputAnchors": [
+          {
+            "id": "executeFlowAgentflow_1-output-executeFlowAgentflow",
+            "label": "Execute Flow",
+            "name": "executeFlowAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 173,
+      "height": 66,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 833.7566859607864,
+        "y": 163.63131900462014
+      },
+      "dragging": false
+    },
+    {
+      "id": "conditionAgentflow_0",
+      "position": {
+        "x": 1090.660815895184,
+        "y": 157.22372024352438
+      },
+      "data": {
+        "id": "conditionAgentflow_0",
+        "label": "Is Approved?",
+        "version": 1,
+        "name": "conditionAgentflow",
+        "type": "Condition",
+        "color": "#FFB938",
+        "baseClasses": [
+          "Condition"
+        ],
+        "category": "Agent Flows",
+        "description": "Split flows based on If Else conditions",
+        "inputParams": [
+          {
+            "label": "Conditions",
+            "name": "conditions",
+            "type": "array",
+            "description": "Values to compare",
+            "acceptVariable": true,
+            "default": [
+              {
+                "type": "boolean",
+                "value1": "",
+                "operation": "equal",
+                "value2": ""
+              }
+            ],
+            "array": [
+              {
+                "label": "Type",
+                "name": "type",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "String",
+                    "name": "string"
+                  },
+                  {
+                    "label": "Number",
+                    "name": "number"
+                  },
+                  {
+                    "label": "Boolean",
+                    "name": "boolean"
+                  }
+                ],
+                "default": "string"
+              },
+              {
+                "label": "Value 1",
+                "name": "value1",
+                "type": "string",
+                "default": "",
+                "description": "First value to be compared with",
+                "acceptVariable": true,
+                "show": {
+                  "conditions[$index].type": "string"
+                }
+              },
+              {
+                "label": "Operation",
+                "name": "operation",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "Contains",
+                    "name": "contains"
+                  },
+                  {
+                    "label": "Ends With",
+                    "name": "endsWith"
+                  },
+                  {
+                    "label": "Equal",
+                    "name": "equal"
+                  },
+                  {
+                    "label": "Not Contains",
+                    "name": "notContains"
+                  },
+                  {
+                    "label": "Not Equal",
+                    "name": "notEqual"
+                  },
+                  {
+                    "label": "Regex",
+                    "name": "regex"
+                  },
+                  {
+                    "label": "Starts With",
+                    "name": "startsWith"
+                  },
+                  {
+                    "label": "Is Empty",
+                    "name": "isEmpty"
+                  },
+                  {
+                    "label": "Not Empty",
+                    "name": "notEmpty"
+                  }
+                ],
+                "default": "equal",
+                "description": "Type of operation",
+                "show": {
+                  "conditions[$index].type": "string"
+                }
+              },
+              {
+                "label": "Value 2",
+                "name": "value2",
+                "type": "string",
+                "default": "",
+                "description": "Second value to be compared with",
+                "acceptVariable": true,
+                "show": {
+                  "conditions[$index].type": "string"
+                },
+                "hide": {
+                  "conditions[$index].operation": [
+                    "isEmpty",
+                    "notEmpty"
+                  ]
+                }
+              },
+              {
+                "label": "Value 1",
+                "name": "value1",
+                "type": "number",
+                "default": "",
+                "description": "First value to be compared with",
+                "acceptVariable": true,
+                "show": {
+                  "conditions[$index].type": "number"
+                }
+              },
+              {
+                "label": "Operation",
+                "name": "operation",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "Smaller",
+                    "name": "smaller"
+                  },
+                  {
+                    "label": "Smaller Equal",
+                    "name": "smallerEqual"
+                  },
+                  {
+                    "label": "Equal",
+                    "name": "equal"
+                  },
+                  {
+                    "label": "Not Equal",
+                    "name": "notEqual"
+                  },
+                  {
+                    "label": "Larger",
+                    "name": "larger"
+                  },
+                  {
+                    "label": "Larger Equal",
+                    "name": "largerEqual"
+                  },
+                  {
+                    "label": "Is Empty",
+                    "name": "isEmpty"
+                  },
+                  {
+                    "label": "Not Empty",
+                    "name": "notEmpty"
+                  }
+                ],
+                "default": "equal",
+                "description": "Type of operation",
+                "show": {
+                  "conditions[$index].type": "number"
+                }
+              },
+              {
+                "label": "Value 2",
+                "name": "value2",
+                "type": "number",
+                "default": 0,
+                "description": "Second value to be compared with",
+                "acceptVariable": true,
+                "show": {
+                  "conditions[$index].type": "number"
+                }
+              },
+              {
+                "label": "Value 1",
+                "name": "value1",
+                "type": "boolean",
+                "default": false,
+                "description": "First value to be compared with",
+                "show": {
+                  "conditions[$index].type": "boolean"
+                }
+              },
+              {
+                "label": "Operation",
+                "name": "operation",
+                "type": "options",
+                "options": [
+                  {
+                    "label": "Equal",
+                    "name": "equal"
+                  },
+                  {
+                    "label": "Not Equal",
+                    "name": "notEqual"
+                  }
+                ],
+                "default": "equal",
+                "description": "Type of operation",
+                "show": {
+                  "conditions[$index].type": "boolean"
+                }
+              },
+              {
+                "label": "Value 2",
+                "name": "value2",
+                "type": "boolean",
+                "default": false,
+                "description": "Second value to be compared with",
+                "show": {
+                  "conditions[$index].type": "boolean"
+                }
+              }
+            ],
+            "id": "conditionAgentflow_0-input-conditions-array",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "conditions": [
+            {
+              "type": "boolean",
+              "value1": true,
+              "operation": "equal",
+              "value2": ""
+            }
+          ]
+        },
+        "outputAnchors": [
+          {
+            "id": "conditionAgentflow_0-output-0",
+            "label": 0,
+            "name": 0,
+            "description": "Condition 0"
+          },
+          {
+            "id": "conditionAgentflow_0-output-1",
+            "label": 1,
+            "name": 1,
+            "description": "Else"
+          }
+        ],
+        "outputs": {
+          "conditionAgentflow": ""
+        },
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 157,
+      "height": 80,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1090.660815895184,
+        "y": 157.22372024352438
+      },
+      "dragging": false
+    },
+    {
+      "id": "humanInputAgentflow_0",
+      "position": {
+        "x": 322.2508730406902,
+        "y": -22.128374615728944
+      },
+      "data": {
+        "id": "humanInputAgentflow_0",
+        "label": "Human Input",
+        "version": 1,
+        "name": "humanInputAgentflow",
+        "type": "HumanInput",
+        "color": "#6E6EFD",
+        "baseClasses": [
+          "HumanInput"
+        ],
+        "category": "Agent Flows",
+        "description": "Request human input, approval or rejection during execution",
+        "inputParams": [
+          {
+            "label": "Description Type",
+            "name": "humanInputDescriptionType",
+            "type": "options",
+            "options": [
+              {
+                "label": "Fixed",
+                "name": "fixed",
+                "description": "Specify a fixed description"
+              },
+              {
+                "label": "Dynamic",
+                "name": "dynamic",
+                "description": "Use LLM to generate a description"
+              }
+            ],
+            "id": "humanInputAgentflow_0-input-humanInputDescriptionType-options",
+            "display": true
+          },
+          {
+            "label": "Description",
+            "name": "humanInputDescription",
+            "type": "string",
+            "placeholder": "Are you sure you want to proceed?",
+            "acceptVariable": true,
+            "rows": 4,
+            "show": {
+              "humanInputDescriptionType": "fixed"
+            },
+            "id": "humanInputAgentflow_0-input-humanInputDescription-string",
+            "display": false
+          },
+          {
+            "label": "Model",
+            "name": "humanInputModel",
+            "type": "asyncOptions",
+            "loadMethod": "listModels",
+            "loadConfig": true,
+            "show": {
+              "humanInputDescriptionType": "dynamic"
+            },
+            "id": "humanInputAgentflow_0-input-humanInputModel-asyncOptions",
+            "display": false
+          },
+          {
+            "label": "Prompt",
+            "name": "humanInputModelPrompt",
+            "type": "string",
+            "default": "<p>Summarize the conversation between the user and the assistant, reiterate the last message from the assistant, and ask if user would like to proceed or if they have any feedback. </p>\n<ul>\n<li>Begin by capturing the key points of the conversation, ensuring that you reflect the main ideas and themes discussed.</li>\n<li>Then, clearly reproduce the last message sent by the assistant to maintain continuity. Make sure the whole message is reproduced.</li>\n<li>Finally, ask the user if they would like to proceed, or provide any feedback on the last assistant message</li>\n</ul>\n<h2 id=\"output-format-the-output-should-be-structured-in-three-parts-\">Output Format The output should be structured in three parts in text:</h2>\n<ul>\n<li>A summary of the conversation (1-3 sentences).</li>\n<li>The last assistant message (exactly as it appeared).</li>\n<li>Ask the user if they would like to proceed, or provide any feedback on last assistant message. No other explanation and elaboration is needed.</li>\n</ul>\n",
+            "acceptVariable": true,
+            "generateInstruction": true,
+            "rows": 4,
+            "show": {
+              "humanInputDescriptionType": "dynamic"
+            },
+            "id": "humanInputAgentflow_0-input-humanInputModelPrompt-string",
+            "display": false
+          },
+          {
+            "label": "Enable Feedback",
+            "name": "humanInputEnableFeedback",
+            "type": "boolean",
+            "default": true,
+            "id": "humanInputAgentflow_0-input-humanInputEnableFeedback-boolean",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "humanInputDescriptionType": "",
+          "humanInputDescription": "",
+          "humanInputModel": "",
+          "humanInputModelPrompt": "<p>Summarize the conversation between the user and the assistant, reiterate the last message from the assistant, and ask if user would like to proceed or if they have any feedback. </p>\n<ul>\n<li>Begin by capturing the key points of the conversation, ensuring that you reflect the main ideas and themes discussed.</li>\n<li>Then, clearly reproduce the last message sent by the assistant to maintain continuity. Make sure the whole message is reproduced.</li>\n<li>Finally, ask the user if they would like to proceed, or provide any feedback on the last assistant message</li>\n</ul>\n<h2 id=\"output-format-the-output-should-be-structured-in-three-parts-\">Output Format The output should be structured in three parts in text:</h2>\n<ul>\n<li>A summary of the conversation (1-3 sentences).</li>\n<li>The last assistant message (exactly as it appeared).</li>\n<li>Ask the user if they would like to proceed, or provide any feedback on last assistant message. No other explanation and elaboration is needed.</li>\n</ul>\n",
+          "humanInputEnableFeedback": true
+        },
+        "outputAnchors": [
+          {
+            "id": "humanInputAgentflow_0-output-0",
+            "label": "Human Input",
+            "name": "humanInputAgentflow"
+          },
+          {
+            "id": "humanInputAgentflow_0-output-1",
+            "label": "Human Input",
+            "name": "humanInputAgentflow"
+          }
+        ],
+        "outputs": {
+          "humanInputAgentflow": ""
+        },
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 155,
+      "height": 80,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 322.2508730406902,
+        "y": -22.128374615728944
+      },
+      "dragging": false
+    },
+    {
+      "id": "directReplyAgentflow_0",
+      "position": {
+        "x": 1372.4543417644243,
+        "y": 74.6974782842523
+      },
+      "data": {
+        "id": "directReplyAgentflow_0",
+        "label": "Failed Message",
+        "version": 1,
+        "name": "directReplyAgentflow",
+        "type": "DirectReply",
+        "color": "#4DDBBB",
+        "hideOutput": true,
+        "baseClasses": [
+          "DirectReply"
+        ],
+        "category": "Agent Flows",
+        "description": "Directly reply to the user with a message",
+        "inputParams": [
+          {
+            "label": "Message",
+            "name": "directReplyMessage",
+            "type": "string",
+            "rows": 4,
+            "acceptVariable": true,
+            "id": "directReplyAgentflow_0-input-directReplyMessage-string",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "directReplyMessage": ""
+        },
+        "outputAnchors": [],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 173,
+      "height": 66,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1372.4543417644243,
+        "y": 74.6974782842523
+      },
+      "dragging": false
+    },
+    {
+      "id": "stickyNoteAgentflow_0",
+      "position": {
+        "x": -450.76718802654216,
+        "y": -48.952227939302276
+      },
+      "data": {
+        "id": "stickyNoteAgentflow_0",
+        "label": "Sticky Note",
+        "version": 1,
+        "name": "stickyNoteAgentflow",
+        "type": "StickyNote",
+        "color": "#fee440",
+        "baseClasses": [
+          "StickyNote"
+        ],
+        "category": "Agent Flows",
+        "description": "Add notes to the agent flow",
+        "inputParams": [
+          {
+            "label": "",
+            "name": "note",
+            "type": "string",
+            "rows": 1,
+            "placeholder": "Type something here",
+            "optional": true,
+            "id": "stickyNoteAgentflow_0-input-note-string",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "note": "Business User Email\ne.g. \"Need Copilot License\"\n"
+        },
+        "outputAnchors": [
+          {
+            "id": "stickyNoteAgentflow_0-output-stickyNoteAgentflow",
+            "label": "Sticky Note",
+            "name": "stickyNoteAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "stickyNote",
+      "width": 241,
+      "height": 103,
+      "selected": false,
+      "positionAbsolute": {
+        "x": -450.76718802654216,
+        "y": -48.952227939302276
+      },
+      "dragging": false
+    },
+    {
+      "id": "stickyNoteAgentflow_1",
+      "position": {
+        "x": -200.06296419083085,
+        "y": 205.82453019653906
+      },
+      "data": {
+        "id": "stickyNoteAgentflow_1",
+        "label": "Sticky Note (1)",
+        "version": 1,
+        "name": "stickyNoteAgentflow",
+        "type": "StickyNote",
+        "color": "#fee440",
+        "baseClasses": [
+          "StickyNote"
+        ],
+        "category": "Agent Flows",
+        "description": "Add notes to the agent flow",
+        "inputParams": [
+          {
+            "label": "",
+            "name": "note",
+            "type": "string",
+            "rows": 1,
+            "placeholder": "Type something here",
+            "optional": true,
+            "id": "stickyNoteAgentflow_1-input-note-string",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "note": "- Parse email\n- Extract: requester, context like license precurement, justification \n- Classify request  "
+        },
+        "outputAnchors": [
+          {
+            "id": "stickyNoteAgentflow_1-output-stickyNoteAgentflow",
+            "label": "Sticky Note",
+            "name": "stickyNoteAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "stickyNote",
+      "width": 241,
+      "height": 143,
+      "selected": false,
+      "positionAbsolute": {
+        "x": -200.06296419083085,
+        "y": 205.82453019653906
+      },
+      "dragging": false
+    },
+    {
+      "id": "stickyNoteAgentflow_2",
+      "position": {
+        "x": 64.06009624856111,
+        "y": 204.63881898665898
+      },
+      "data": {
+        "id": "stickyNoteAgentflow_2",
+        "label": "Sticky Note (1) (2)",
+        "version": 1,
+        "name": "stickyNoteAgentflow",
+        "type": "StickyNote",
+        "color": "#fee440",
+        "baseClasses": [
+          "StickyNote"
+        ],
+        "category": "Agent Flows",
+        "description": "Add notes to the agent flow",
+        "inputParams": [
+          {
+            "label": "",
+            "name": "note",
+            "type": "string",
+            "rows": 1,
+            "placeholder": "Type something here",
+            "optional": true,
+            "id": "stickyNoteAgentflow_2-input-note-string",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "note": "Validation Agent \n- Is info complete?\n- License allowed? \n- Policy check\n\nIf missing → Ask user\nelse → Proceed to   \n             Salesforce Identity \n             Agent"
+        },
+        "outputAnchors": [
+          {
+            "id": "stickyNoteAgentflow_2-output-stickyNoteAgentflow",
+            "label": "Sticky Note",
+            "name": "stickyNoteAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "stickyNote",
+      "width": 241,
+      "height": 223,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 64.06009624856111,
+        "y": 204.63881898665898
+      },
+      "dragging": false
+    },
+    {
+      "id": "stickyNoteAgentflow_3",
+      "position": {
+        "x": 272.59048797706544,
+        "y": -136.01738923979988
+      },
+      "data": {
+        "id": "stickyNoteAgentflow_3",
+        "label": "Sticky Note (3)",
+        "version": 1,
+        "name": "stickyNoteAgentflow",
+        "type": "StickyNote",
+        "color": "#fee440",
+        "baseClasses": [
+          "StickyNote"
+        ],
+        "category": "Agent Flows",
+        "description": "Add notes to the agent flow",
+        "inputParams": [
+          {
+            "label": "",
+            "name": "note",
+            "type": "string",
+            "rows": 1,
+            "placeholder": "Type something here",
+            "optional": true,
+            "id": "stickyNoteAgentflow_3-input-note-string",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "note": "Capture missing info from user"
+        },
+        "outputAnchors": [
+          {
+            "id": "stickyNoteAgentflow_3-output-stickyNoteAgentflow",
+            "label": "Sticky Note",
+            "name": "stickyNoteAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "stickyNote",
+      "width": 241,
+      "height": 83,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 272.59048797706544,
+        "y": -136.01738923979988
+      },
+      "dragging": false
+    },
+    {
+      "id": "stickyNoteAgentflow_4",
+      "position": {
+        "x": 527.2116651836359,
+        "y": 199.691934821858
+      },
+      "data": {
+        "id": "stickyNoteAgentflow_4",
+        "label": "Sticky Note (1) (2) (4)",
+        "version": 1,
+        "name": "stickyNoteAgentflow",
+        "type": "StickyNote",
+        "color": "#fee440",
+        "baseClasses": [
+          "StickyNote"
+        ],
+        "category": "Agent Flows",
+        "description": "Add notes to the agent flow",
+        "inputParams": [
+          {
+            "label": "",
+            "name": "note",
+            "type": "string",
+            "rows": 1,
+            "placeholder": "Type something here",
+            "optional": true,
+            "id": "stickyNoteAgentflow_4-input-note-string",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "note": "Identity Agent\n- Search Contact by email\n- If not found → Create\n                            Contact"
+        },
+        "outputAnchors": [
+          {
+            "id": "stickyNoteAgentflow_4-output-stickyNoteAgentflow",
+            "label": "Sticky Note",
+            "name": "stickyNoteAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "stickyNote",
+      "width": 241,
+      "height": 123,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 527.2116651836359,
+        "y": 199.691934821858
+      },
+      "dragging": false
+    },
+    {
+      "id": "stickyNoteAgentflow_5",
+      "position": {
+        "x": 796.4453748585113,
+        "y": 264.99080579723125
+      },
+      "data": {
+        "id": "stickyNoteAgentflow_5",
+        "label": "Sticky Note (1) (2) (4) (5)",
+        "version": 1,
+        "name": "stickyNoteAgentflow",
+        "type": "StickyNote",
+        "color": "#fee440",
+        "baseClasses": [
+          "StickyNote"
+        ],
+        "category": "Agent Flows",
+        "description": "Add notes to the agent flow",
+        "inputParams": [
+          {
+            "label": "",
+            "name": "note",
+            "type": "string",
+            "rows": 1,
+            "placeholder": "Type something here",
+            "optional": true,
+            "id": "stickyNoteAgentflow_5-input-note-string",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "note": "Approval Agent\n- Determine approvals \n   (Manager / Finance / IT)\n- Trigger Salesforce / Slack / \n   Email approval flows"
+        },
+        "outputAnchors": [
+          {
+            "id": "stickyNoteAgentflow_5-output-stickyNoteAgentflow",
+            "label": "Sticky Note",
+            "name": "stickyNoteAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "stickyNote",
+      "width": 241,
+      "height": 143,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 796.4453748585113,
+        "y": 264.99080579723125
+      },
+      "dragging": false
+    },
+    {
+      "id": "stickyNoteAgentflow_6",
+      "position": {
+        "x": 1062.7109540345064,
+        "y": 263.01205213131084
+      },
+      "data": {
+        "id": "stickyNoteAgentflow_6",
+        "label": "Sticky Note (1) (2) (4) (5) (6)",
+        "version": 1,
+        "name": "stickyNoteAgentflow",
+        "type": "StickyNote",
+        "color": "#fee440",
+        "baseClasses": [
+          "StickyNote"
+        ],
+        "category": "Agent Flows",
+        "description": "Add notes to the agent flow",
+        "inputParams": [
+          {
+            "label": "",
+            "name": "note",
+            "type": "string",
+            "rows": 1,
+            "placeholder": "Type something here",
+            "optional": true,
+            "id": "stickyNoteAgentflow_6-input-note-string",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "note": "Conditional Routing based on approval"
+        },
+        "outputAnchors": [
+          {
+            "id": "stickyNoteAgentflow_6-output-stickyNoteAgentflow",
+            "label": "Sticky Note",
+            "name": "stickyNoteAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "stickyNote",
+      "width": 241,
+      "height": 83,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1062.7109540345064,
+        "y": 263.01205213131084
+      },
+      "dragging": false
+    },
+    {
+      "id": "stickyNoteAgentflow_7",
+      "position": {
+        "x": 1337.8809247071433,
+        "y": -14.013461097545289
+      },
+      "data": {
+        "id": "stickyNoteAgentflow_7",
+        "label": "Sticky Note (1) (2) (4) (5) (6) (7)",
+        "version": 1,
+        "name": "stickyNoteAgentflow",
+        "type": "StickyNote",
+        "color": "#fee440",
+        "baseClasses": [
+          "StickyNote"
+        ],
+        "category": "Agent Flows",
+        "description": "Add notes to the agent flow",
+        "inputParams": [
+          {
+            "label": "",
+            "name": "note",
+            "type": "string",
+            "rows": 1,
+            "placeholder": "Type something here",
+            "optional": true,
+            "id": "stickyNoteAgentflow_7-input-note-string",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "note": "Display message if rejected"
+        },
+        "outputAnchors": [
+          {
+            "id": "stickyNoteAgentflow_7-output-stickyNoteAgentflow",
+            "label": "Sticky Note",
+            "name": "stickyNoteAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "stickyNote",
+      "width": 241,
+      "height": 62,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1337.8809247071433,
+        "y": -14.013461097545289
+      },
+      "dragging": false
+    },
+    {
+      "id": "stickyNoteAgentflow_8",
+      "position": {
+        "x": 1341.2901971821339,
+        "y": 340.45858591395
+      },
+      "data": {
+        "id": "stickyNoteAgentflow_8",
+        "label": "Sticky Note (1) (2) (4) (5) (8)",
+        "version": 1,
+        "name": "stickyNoteAgentflow",
+        "type": "StickyNote",
+        "color": "#fee440",
+        "baseClasses": [
+          "StickyNote"
+        ],
+        "category": "Agent Flows",
+        "description": "Add notes to the agent flow",
+        "inputParams": [
+          {
+            "label": "",
+            "name": "note",
+            "type": "string",
+            "rows": 1,
+            "placeholder": "Type something here",
+            "optional": true,
+            "id": "stickyNoteAgentflow_8-input-note-string",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "note": "If Approved\n- Create Salesforce Case\n- Populate fields:\n   - Requester (Contact)\n   - License type\n   - Business justification\n   - Priority / SLA"
+        },
+        "outputAnchors": [
+          {
+            "id": "stickyNoteAgentflow_8-output-stickyNoteAgentflow",
+            "label": "Sticky Note",
+            "name": "stickyNoteAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "stickyNote",
+      "width": 241,
+      "height": 183,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1341.2901971821339,
+        "y": 340.45858591395
+      },
+      "dragging": false
+    },
+    {
+      "id": "stickyNoteAgentflow_9",
+      "position": {
+        "x": 1610.6737897924147,
+        "y": 341.7301392898158
+      },
+      "data": {
+        "id": "stickyNoteAgentflow_9",
+        "label": "Sticky Note (1) (2) (4) (5) (8) (9)",
+        "version": 1,
+        "name": "stickyNoteAgentflow",
+        "type": "StickyNote",
+        "color": "#fee440",
+        "baseClasses": [
+          "StickyNote"
+        ],
+        "category": "Agent Flows",
+        "description": "Add notes to the agent flow",
+        "inputParams": [
+          {
+            "label": "",
+            "name": "note",
+            "type": "string",
+            "rows": 1,
+            "placeholder": "Type something here",
+            "optional": true,
+            "id": "stickyNoteAgentflow_9-input-note-string",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "note": "After Creation:\n- Notify requester \n- Notify IT procurement\n- Case number confirmation"
+        },
+        "outputAnchors": [
+          {
+            "id": "stickyNoteAgentflow_9-output-stickyNoteAgentflow",
+            "label": "Sticky Note",
+            "name": "stickyNoteAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "stickyNote",
+      "width": 241,
+      "height": 123,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1610.6737897924147,
+        "y": 341.7301392898158
+      },
+      "dragging": false
+    },
+    {
+      "id": "toolAgentflow_1",
+      "position": {
+        "x": 1387.4731459086393,
+        "y": 232.69023815559424
+      },
+      "data": {
+        "id": "toolAgentflow_1",
+        "label": "Execution",
+        "version": 1.2,
+        "name": "toolAgentflow",
+        "type": "Tool",
+        "color": "#d4a373",
+        "baseClasses": [
+          "Tool"
+        ],
+        "category": "Agent Flows",
+        "description": "Tools allow LLM to interact with external systems",
+        "inputParams": [
+          {
+            "label": "Tool",
+            "name": "toolAgentflowSelectedTool",
+            "type": "asyncOptions",
+            "loadMethod": "listTools",
+            "loadConfig": true,
+            "id": "toolAgentflow_1-input-toolAgentflowSelectedTool-asyncOptions",
+            "display": true
+          },
+          {
+            "label": "Tool Input Arguments",
+            "name": "toolInputArgs",
+            "type": "array",
+            "acceptVariable": true,
+            "refresh": true,
+            "array": [
+              {
+                "label": "Input Argument Name",
+                "name": "inputArgName",
+                "type": "asyncOptions",
+                "loadMethod": "listToolInputArgs",
+                "refresh": true
+              },
+              {
+                "label": "Input Argument Value",
+                "name": "inputArgValue",
+                "type": "string",
+                "acceptVariable": true
+              }
+            ],
+            "show": {
+              "toolAgentflowSelectedTool": ".+"
+            },
+            "id": "toolAgentflow_1-input-toolInputArgs-array",
+            "display": true
+          },
+          {
+            "label": "Update Flow State",
+            "name": "toolUpdateState",
+            "description": "Update runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "asyncOptions",
+                "loadMethod": "listRuntimeStateKeys"
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "acceptVariable": true,
+                "acceptNodeOutputAsVariable": true
+              }
+            ],
+            "id": "toolAgentflow_1-input-toolUpdateState-array",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "toolAgentflowSelectedTool": "customTool",
+          "toolInputArgs": "",
+          "toolUpdateState": "",
+          "toolAgentflowSelectedToolConfig": {
+            "selectedTool": "6e2c23d6-8722-43c0-ae7f-95001468748d",
+            "returnDirect": "",
+            "customToolName": "",
+            "customToolDesc": "",
+            "customToolSchema": "",
+            "customToolFunc": "",
+            "toolAgentflowSelectedTool": "customTool"
+          }
+        },
+        "outputAnchors": [
+          {
+            "id": "toolAgentflow_1-output-toolAgentflow",
+            "label": "Tool",
+            "name": "toolAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 136,
+      "height": 68,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1387.4731459086393,
+        "y": 232.69023815559424
+      },
+      "dragging": false
+    },
+    {
+      "id": "toolAgentflow_2",
+      "position": {
+        "x": 1650.0810962771916,
+        "y": 232.69023815559427
+      },
+      "data": {
+        "id": "toolAgentflow_2",
+        "label": "Notification",
+        "version": 1.2,
+        "name": "toolAgentflow",
+        "type": "Tool",
+        "color": "#d4a373",
+        "baseClasses": [
+          "Tool"
+        ],
+        "category": "Agent Flows",
+        "description": "Tools allow LLM to interact with external systems",
+        "inputParams": [
+          {
+            "label": "Tool",
+            "name": "toolAgentflowSelectedTool",
+            "type": "asyncOptions",
+            "loadMethod": "listTools",
+            "loadConfig": true,
+            "id": "toolAgentflow_2-input-toolAgentflowSelectedTool-asyncOptions",
+            "display": true
+          },
+          {
+            "label": "Tool Input Arguments",
+            "name": "toolInputArgs",
+            "type": "array",
+            "acceptVariable": true,
+            "refresh": true,
+            "array": [
+              {
+                "label": "Input Argument Name",
+                "name": "inputArgName",
+                "type": "asyncOptions",
+                "loadMethod": "listToolInputArgs",
+                "refresh": true
+              },
+              {
+                "label": "Input Argument Value",
+                "name": "inputArgValue",
+                "type": "string",
+                "acceptVariable": true
+              }
+            ],
+            "show": {
+              "toolAgentflowSelectedTool": ".+"
+            },
+            "id": "toolAgentflow_2-input-toolInputArgs-array",
+            "display": true
+          },
+          {
+            "label": "Update Flow State",
+            "name": "toolUpdateState",
+            "description": "Update runtime state during the execution of the workflow",
+            "type": "array",
+            "optional": true,
+            "acceptVariable": true,
+            "array": [
+              {
+                "label": "Key",
+                "name": "key",
+                "type": "asyncOptions",
+                "loadMethod": "listRuntimeStateKeys"
+              },
+              {
+                "label": "Value",
+                "name": "value",
+                "type": "string",
+                "acceptVariable": true,
+                "acceptNodeOutputAsVariable": true
+              }
+            ],
+            "id": "toolAgentflow_2-input-toolUpdateState-array",
+            "display": true
+          }
+        ],
+        "inputAnchors": [],
+        "inputs": {
+          "toolAgentflowSelectedTool": "microsoftOutlook",
+          "toolInputArgs": "",
+          "toolUpdateState": "",
+          "toolAgentflowSelectedToolConfig": {
+            "credential": "",
+            "outlookType": "",
+            "calendarActions": "",
+            "messageActions": "",
+            "maxResultsListCalendars": 50,
+            "calendarIdGetCalendar": "",
+            "calendarNameCreateCalendar": "",
+            "calendarIdUpdateCalendar": "",
+            "calendarNameUpdateCalendar": "",
+            "calendarIdDeleteCalendar": "",
+            "calendarIdListEvents": "",
+            "maxResultsListEvents": 50,
+            "startDateTimeListEvents": "",
+            "endDateTimeListEvents": "",
+            "eventIdGetEvent": "",
+            "subjectCreateEvent": "",
+            "bodyCreateEvent": "",
+            "startDateTimeCreateEvent": "",
+            "endDateTimeCreateEvent": "",
+            "timeZoneCreateEvent": "UTC",
+            "locationCreateEvent": "",
+            "attendeesCreateEvent": "",
+            "eventIdUpdateEvent": "",
+            "subjectUpdateEvent": "",
+            "eventIdDeleteEvent": "",
+            "maxResultsListMessages": 50,
+            "filterListMessages": "",
+            "messageIdGetMessage": "",
+            "toCreateDraftMessage": "",
+            "subjectCreateDraftMessage": "",
+            "bodyCreateDraftMessage": "",
+            "ccCreateDraftMessage": "",
+            "bccCreateDraftMessage": "",
+            "toSendMessage": "",
+            "subjectSendMessage": "",
+            "bodySendMessage": "",
+            "messageIdUpdateMessage": "",
+            "isReadUpdateMessage": "",
+            "messageIdDeleteMessage": "",
+            "messageIdCopyMessage": "",
+            "destinationFolderIdCopyMessage": "",
+            "messageIdMoveMessage": "",
+            "destinationFolderIdMoveMessage": "",
+            "messageIdReplyMessage": "",
+            "replyBodyReplyMessage": "",
+            "messageIdForwardMessage": "",
+            "forwardToForwardMessage": "",
+            "forwardCommentForwardMessage": "",
+            "toolAgentflowSelectedTool": "microsoftOutlook"
+          }
+        },
+        "outputAnchors": [
+          {
+            "id": "toolAgentflow_2-output-toolAgentflow",
+            "label": "Tool",
+            "name": "toolAgentflow"
+          }
+        ],
+        "outputs": {},
+        "selected": false
+      },
+      "type": "agentFlow",
+      "width": 147,
+      "height": 68,
+      "positionAbsolute": {
+        "x": 1650.0810962771916,
+        "y": 232.69023815559427
+      },
+      "selected": false,
+      "dragging": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "startAgentflow_0",
+      "sourceHandle": "startAgentflow_0-output-startAgentflow",
+      "target": "toolAgentflow_0",
+      "targetHandle": "toolAgentflow_0",
+      "data": {
+        "sourceColor": "#7EE787",
+        "targetColor": "#d4a373",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "startAgentflow_0-startAgentflow_0-output-startAgentflow-toolAgentflow_0-toolAgentflow_0"
+    },
+    {
+      "source": "toolAgentflow_0",
+      "sourceHandle": "toolAgentflow_0-output-toolAgentflow",
+      "target": "llmAgentflow_0",
+      "targetHandle": "llmAgentflow_0",
+      "data": {
+        "sourceColor": "#d4a373",
+        "targetColor": "#64B5F6",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "toolAgentflow_0-toolAgentflow_0-output-toolAgentflow-llmAgentflow_0-llmAgentflow_0"
+    },
+    {
+      "source": "conditionAgentAgentflow_0",
+      "sourceHandle": "conditionAgentAgentflow_0-output-1",
+      "target": "executeFlowAgentflow_0",
+      "targetHandle": "executeFlowAgentflow_0",
+      "data": {
+        "sourceColor": "#ff8fab",
+        "targetColor": "#a3b18a",
+        "edgeLabel": "1",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "conditionAgentAgentflow_0-conditionAgentAgentflow_0-output-1-executeFlowAgentflow_0-executeFlowAgentflow_0"
+    },
+    {
+      "source": "llmAgentflow_0",
+      "sourceHandle": "llmAgentflow_0-output-llmAgentflow",
+      "target": "conditionAgentAgentflow_0",
+      "targetHandle": "conditionAgentAgentflow_0",
+      "data": {
+        "sourceColor": "#64B5F6",
+        "targetColor": "#ff8fab",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "llmAgentflow_0-llmAgentflow_0-output-llmAgentflow-conditionAgentAgentflow_0-conditionAgentAgentflow_0"
+    },
+    {
+      "source": "executeFlowAgentflow_0",
+      "sourceHandle": "executeFlowAgentflow_0-output-executeFlowAgentflow",
+      "target": "executeFlowAgentflow_1",
+      "targetHandle": "executeFlowAgentflow_1",
+      "data": {
+        "sourceColor": "#a3b18a",
+        "targetColor": "#a3b18a",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "executeFlowAgentflow_0-executeFlowAgentflow_0-output-executeFlowAgentflow-executeFlowAgentflow_1-executeFlowAgentflow_1"
+    },
+    {
+      "source": "executeFlowAgentflow_1",
+      "sourceHandle": "executeFlowAgentflow_1-output-executeFlowAgentflow",
+      "target": "conditionAgentflow_0",
+      "targetHandle": "conditionAgentflow_0",
+      "data": {
+        "sourceColor": "#a3b18a",
+        "targetColor": "#FFB938",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "executeFlowAgentflow_1-executeFlowAgentflow_1-output-executeFlowAgentflow-conditionAgentflow_0-conditionAgentflow_0"
+    },
+    {
+      "source": "conditionAgentAgentflow_0",
+      "sourceHandle": "conditionAgentAgentflow_0-output-0",
+      "target": "humanInputAgentflow_0",
+      "targetHandle": "humanInputAgentflow_0",
+      "data": {
+        "sourceColor": "#ff8fab",
+        "targetColor": "#6E6EFD",
+        "edgeLabel": "0",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "conditionAgentAgentflow_0-conditionAgentAgentflow_0-output-0-humanInputAgentflow_0-humanInputAgentflow_0"
+    },
+    {
+      "source": "humanInputAgentflow_0",
+      "sourceHandle": "humanInputAgentflow_0-output-0",
+      "target": "executeFlowAgentflow_0",
+      "targetHandle": "executeFlowAgentflow_0",
+      "data": {
+        "sourceColor": "#6E6EFD",
+        "targetColor": "#a3b18a",
+        "edgeLabel": "proceed",
+        "isHumanInput": true
+      },
+      "type": "agentFlow",
+      "id": "humanInputAgentflow_0-humanInputAgentflow_0-output-0-executeFlowAgentflow_0-executeFlowAgentflow_0"
+    },
+    {
+      "source": "conditionAgentflow_0",
+      "sourceHandle": "conditionAgentflow_0-output-0",
+      "target": "directReplyAgentflow_0",
+      "targetHandle": "directReplyAgentflow_0",
+      "data": {
+        "sourceColor": "#FFB938",
+        "targetColor": "#4DDBBB",
+        "edgeLabel": "0",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "conditionAgentflow_0-conditionAgentflow_0-output-0-directReplyAgentflow_0-directReplyAgentflow_0"
+    },
+    {
+      "source": "conditionAgentflow_0",
+      "sourceHandle": "conditionAgentflow_0-output-1",
+      "target": "toolAgentflow_1",
+      "targetHandle": "toolAgentflow_1",
+      "data": {
+        "sourceColor": "#FFB938",
+        "targetColor": "#d4a373",
+        "edgeLabel": "1",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "conditionAgentflow_0-conditionAgentflow_0-output-1-toolAgentflow_1-toolAgentflow_1"
+    },
+    {
+      "source": "toolAgentflow_1",
+      "sourceHandle": "toolAgentflow_1-output-toolAgentflow",
+      "target": "toolAgentflow_2",
+      "targetHandle": "toolAgentflow_2",
+      "data": {
+        "sourceColor": "#d4a373",
+        "targetColor": "#d4a373",
+        "isHumanInput": false
+      },
+      "type": "agentFlow",
+      "id": "toolAgentflow_1-toolAgentflow_1-output-toolAgentflow-toolAgentflow_2-toolAgentflow_2"
+    }
+  ]
+}

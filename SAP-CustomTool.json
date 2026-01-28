@@ -1,0 +1,9 @@
+{
+  "name": "SAP",
+  "description": "this is tool is able to connect to SAP.",
+  "color": "linear-gradient(rgb(62,95,110), rgb(2,43,248))",
+  "iconSrc": "http://localhost:8080/src/assets/images/sap.svg",
+  "schema": "[{\"id\":0,\"property\":\"TCODE\",\"description\":\"\",\"type\":\"string\",\"required\":false},{\"id\":1,\"property\":\"USERNAME\",\"description\":\"\",\"type\":\"string\",\"required\":false},{\"id\":2,\"property\":\"PROCESS_DATE\",\"description\":\"\",\"type\":\"date\",\"required\":false}]",
+  "func": "/*\n* You can use any libraries imported in Flowise\n* You can use properties specified in Input Schema as variables. Ex: Property = userid, Variable = $userid\n* You can get default flow config: $flow.sessionId, $flow.chatId, $flow.chatflowId, $flow.input, $flow.state\n* You can get custom variables: $vars.<variable-name>\n* Must return a string value at the end of function\n*/\n\nconst fetch = require('node-fetch');\nconst url = `https://api.sap.com/v1/forecast?latitude=52.52&longitude=13.41&current_weather=${PROCESS_DATE}`;\nconst options = {\n    method: 'GET',\n    headers: {\n        'Content-Type': 'application/json'\n    }\n};\ntry {\n    const response = await fetch(url, options);\n    const text = await response.text();\n    return text;\n} catch (error) {\n    console.error(error);\n    return '';\n}",
+  "workspaceId": "aaec2d16-2f88-45d5-847e-b449addd2d30"
+}
