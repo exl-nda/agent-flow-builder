@@ -77,7 +77,7 @@ const dashboard = {
                 // },
                 {
                     id: 'agentflows',
-                    title: 'Agentflows',
+                    title: 'Agent Pipeline',
                     type: 'item',
                     url: '/agentflows',
                     icon: icons.IconUsersGroup,
