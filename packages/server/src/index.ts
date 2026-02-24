@@ -369,7 +369,8 @@ let serverApp: App | undefined
 export async function start(): Promise<void> {
     serverApp = new App()
 
-    const host = process.env.HOST
+    // Default to 0.0.0.0 so the server is reachable from external proxies (e.g. Railway, Docker)
+    const host = process.env.HOST || '0.0.0.0'
     const port = parseInt(process.env.PORT || '', 10) || 3000
     const server = http.createServer(serverApp.app)
 
@@ -377,7 +378,7 @@ export async function start(): Promise<void> {
     await serverApp.config()
 
     server.listen(port, host, () => {
-        logger.info(`⚡️ [server]: Flowise Server is listening at ${host ? 'http://' + host : ''}:${port}`)
+        logger.info(`⚡️ [server]: Flowise Server is listening at http://${host}:${port}`)
     })
 }
 
