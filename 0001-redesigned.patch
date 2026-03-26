@@ -1,0 +1,2922 @@
+From d061a07fd83133b96dc3e1f9adffefec3050c8df Mon Sep 17 00:00:00 2001
+From: Shishir Umrao <shishirumrao.knp@gmail.com>
+Date: Thu, 26 Mar 2026 23:31:03 +0530
+Subject: [PATCH] redesigned
+
+---
+ .../Sidebar/MenuList/NavGroup/index.jsx       |  28 +-
+ .../Sidebar/MenuList/NavItem/index.jsx        |  46 +-
+ .../src/layout/MainLayout/Sidebar/index.jsx   |   9 +-
+ .../ui/src/layout/MainLayout/ViewHeader.jsx   |  49 +-
+ packages/ui/src/layout/MainLayout/index.jsx   |  17 +-
+ packages/ui/src/menu-items/dashboard.js       | 151 +--
+ .../ui/src/ui-component/cards/ItemCard.jsx    |  37 +-
+ .../pagination/TablePagination.jsx            |  54 +-
+ .../src/ui-component/table/FlowListTable.jsx  |  24 +-
+ .../src/ui-component/table/ToolsListTable.jsx |  23 +-
+ packages/ui/src/views/agentflows/index.jsx    | 330 ++++++-
+ packages/ui/src/views/credentials/index.jsx   | 885 ++++++++++++++----
+ packages/ui/src/views/redesign/styles.js      |  81 ++
+ packages/ui/src/views/tools/index.jsx         | 351 ++++++-
+ 14 files changed, 1661 insertions(+), 424 deletions(-)
+ create mode 100644 packages/ui/src/views/redesign/styles.js
+
+diff --git a/packages/ui/src/layout/MainLayout/Sidebar/MenuList/NavGroup/index.jsx b/packages/ui/src/layout/MainLayout/Sidebar/MenuList/NavGroup/index.jsx
+index 054f409c..832ea827 100644
+--- a/packages/ui/src/layout/MainLayout/Sidebar/MenuList/NavGroup/index.jsx
++++ b/packages/ui/src/layout/MainLayout/Sidebar/MenuList/NavGroup/index.jsx
+@@ -9,12 +9,14 @@ import NavItem from '../NavItem'
+ import NavCollapse from '../NavCollapse'
+ import { useAuth } from '@/hooks/useAuth'
+ import { Available } from '@/ui-component/rbac/available'
++import { getRedesignPalette, redesignTypography } from '@/views/redesign/styles'
+ 
+ // ==============================|| SIDEBAR MENU LIST GROUP ||============================== //
+ 
+ const NavGroup = ({ item }) => {
+     const theme = useTheme()
+     const { hasPermission, hasDisplay } = useAuth()
++    const palette = getRedesignPalette(theme, theme?.customization?.isDarkMode)
+ 
+     const listItems = (menu, level = 1) => {
+         // Filter based on display and permission
+@@ -53,7 +55,7 @@ const NavGroup = ({ item }) => {
+ 
+     const renderPrimaryItems = () => {
+         const primaryGroup = item.children.find((child) => child.id === 'primary')
+-        return primaryGroup.children
++        return primaryGroup || { title: '', children: [] }
+     }
+ 
+     const renderNonPrimaryGroups = () => {
+@@ -72,20 +74,15 @@ const NavGroup = ({ item }) => {
+         <>
+             <List
+                 subheader={
+-                    item.title && (
++                    renderPrimaryItems().title && (
+                         <Typography variant='caption' sx={{ ...theme.typography.menuCaption }} display='block' gutterBottom>
+-                            {item.title}
+-                            {item.caption && (
+-                                <Typography variant='caption' sx={{ ...theme.typography.subMenuCaption }} display='block' gutterBottom>
+-                                    {item.caption}
+-                                </Typography>
+-                            )}
++                            <span style={redesignTypography.eyebrow}>{renderPrimaryItems().title}</span>
+                         </Typography>
+                     )
+                 }
+-                sx={{ p: '16px', py: 2, display: 'flex', flexDirection: 'column', gap: 1 }}
++                sx={{ p: '10px', py: 1.25, display: 'flex', flexDirection: 'column', gap: 0.35 }}
+             >
+-                {renderPrimaryItems().map((menu) => listItems(menu))}
++                {renderPrimaryItems().children.map((menu) => listItems(menu))}
+             </List>
+ 
+             {renderNonPrimaryGroups().map((group) => {
+@@ -93,14 +90,19 @@ const NavGroup = ({ item }) => {
+                 return (
+                     <Available key={group.id} permission={groupPermissions}>
+                         <>
+-                            <Divider sx={{ height: '1px', borderColor: theme.palette.grey[900] + 25, my: 0 }} />
++                            <Divider sx={{ height: '1px', borderColor: palette.border, my: 0.35 }} />
+                             <List
+                                 subheader={
+-                                    <Typography variant='caption' sx={{ ...theme.typography.subMenuCaption }} display='block' gutterBottom>
++                                    <Typography
++                                        variant='caption'
++                                        sx={{ ...theme.typography.subMenuCaption, color: palette.textMuted }}
++                                        display='block'
++                                        gutterBottom
++                                    >
+                                         {group.title}
+                                     </Typography>
+                                 }
+-                                sx={{ p: '16px', py: 2, display: 'flex', flexDirection: 'column', gap: 1 }}
++                                sx={{ p: '10px', py: 1.25, display: 'flex', flexDirection: 'column', gap: 0.35 }}
+                             >
+                                 {group.children.map((menu) => listItems(menu))}
+                             </List>
+diff --git a/packages/ui/src/layout/MainLayout/Sidebar/MenuList/NavItem/index.jsx b/packages/ui/src/layout/MainLayout/Sidebar/MenuList/NavItem/index.jsx
+index 10445554..aa840b23 100644
+--- a/packages/ui/src/layout/MainLayout/Sidebar/MenuList/NavItem/index.jsx
++++ b/packages/ui/src/layout/MainLayout/Sidebar/MenuList/NavItem/index.jsx
+@@ -13,6 +13,7 @@ import config from '@/config'
+ 
+ // assets
+ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord'
++import { getRedesignPalette, redesignShadows } from '@/views/redesign/styles'
+ 
+ // ==============================|| SIDEBAR MENU LIST ITEMS ||============================== //
+ 
+@@ -21,10 +22,11 @@ const NavItem = ({ item, level, navType, onClick, onUploadFile }) => {
+     const dispatch = useDispatch()
+     const customization = useSelector((state) => state.customization)
+     const matchesSM = useMediaQuery(theme.breakpoints.down('lg'))
++    const palette = getRedesignPalette(theme, customization.isDarkMode)
+ 
+     const Icon = item.icon
+     const itemIcon = item?.icon ? (
+-        <Icon stroke={1.5} size='1.3rem' />
++        <Icon stroke={1.6} size='0.95rem' />
+     ) : (
+         <FiberManualRecordIcon
+             sx={{
+@@ -100,23 +102,37 @@ const NavItem = ({ item, level, navType, onClick, onUploadFile }) => {
+             {...listItemProps}
+             disabled={item.disabled}
+             sx={{
+-                borderRadius: `${customization.borderRadius}px`,
++                borderRadius: 2,
+                 alignItems: 'flex-start',
+                 backgroundColor: level > 1 ? 'transparent !important' : 'inherit',
+-                py: level > 1 ? 1 : 1.25,
+-                pl: `${level * 24}px`
++                py: level > 1 ? 1 : 1.1,
++                px: 1.5,
++                color: palette.textDim,
++                minHeight: 34,
++                '&:hover': {
++                    backgroundColor: palette.surface2,
++                    color: palette.text
++                },
++                '&.Mui-selected': {
++                    backgroundColor: palette.accentGlow,
++                    color: palette.accent,
++                    boxShadow: redesignShadows.sm
++                },
++                '&.Mui-selected:hover': {
++                    backgroundColor: palette.accentGlow
++                }
+             }}
+             selected={customization.isOpen.findIndex((id) => id === item.id) > -1}
+             onClick={() => itemHandler(item.id)}
+         >
+             {item.id === 'loadChatflow' && <input type='file' hidden accept='.json' onChange={(e) => handleFileUpload(e)} />}
+-            <ListItemIcon sx={{ my: 'auto', minWidth: !item?.icon ? 18 : 36 }}>{itemIcon}</ListItemIcon>
++            <ListItemIcon sx={{ my: 'auto', minWidth: !item?.icon ? 16 : 30, color: 'inherit' }}>{itemIcon}</ListItemIcon>
+             <ListItemText
+                 primary={
+                     <Typography
+                         variant={customization.isOpen.findIndex((id) => id === item.id) > -1 ? 'h5' : 'body1'}
+                         color='inherit'
+-                        sx={{ my: 0.5 }}
++                        sx={{ my: 0.25, fontSize: '0.82rem', fontWeight: 500 }}
+                     >
+                         {item.title}
+                     </Typography>
+@@ -139,6 +155,24 @@ const NavItem = ({ item, level, navType, onClick, onUploadFile }) => {
+                     avatar={item.chip.avatar && <Avatar>{item.chip.avatar}</Avatar>}
+                 />
+             )}
++            {item.countBadge && (
++                <Chip
++                    label={item.countBadge}
++                    size='small'
++                    sx={{
++                        my: 'auto',
++                        ml: 0.5,
++                        height: 22,
++                        minWidth: 34,
++                        borderRadius: 5,
++                        fontWeight: 700,
++                        fontSize: '0.75rem',
++                        color: palette.primary,
++                        background: palette.primaryGlow,
++                        border: `1px solid ${palette.border}`
++                    }}
++                />
++            )}
+             {item.isBeta && (
+                 <Chip
+                     sx={{
+diff --git a/packages/ui/src/layout/MainLayout/Sidebar/index.jsx b/packages/ui/src/layout/MainLayout/Sidebar/index.jsx
+index b05d6669..a044333b 100644
+--- a/packages/ui/src/layout/MainLayout/Sidebar/index.jsx
++++ b/packages/ui/src/layout/MainLayout/Sidebar/index.jsx
+@@ -16,6 +16,7 @@ import CloudMenuList from '@/layout/MainLayout/Sidebar/CloudMenuList'
+ 
+ // store
+ import { drawerWidth, headerHeight } from '@/store/constant'
++import { getRedesignPalette, redesignShadows } from '@/views/redesign/styles'
+ 
+ // ==============================|| SIDEBAR DRAWER ||============================== //
+ 
+@@ -23,6 +24,7 @@ const Sidebar = ({ drawerOpen, drawerToggle, window }) => {
+     const theme = useTheme()
+     const matchUpMd = useMediaQuery(theme.breakpoints.up('md'))
+     const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
++    const palette = getRedesignPalette(theme, theme?.customization?.isDarkMode)
+ 
+     const drawer = (
+         <>
+@@ -79,13 +81,14 @@ const Sidebar = ({ drawerOpen, drawerToggle, window }) => {
+                     sx={{
+                         '& .MuiDrawer-paper': {
+                             width: drawerWidth,
+-                            background: theme.palette.background.default,
+-                            color: theme.palette.text.primary,
++                            background: palette.surface,
++                            color: palette.text,
+                             [theme.breakpoints.up('md')]: {
+                                 top: `${headerHeight}px`
+                             },
+                             borderRight: drawerOpen ? '1px solid' : 'none',
+-                            borderColor: drawerOpen ? theme.palette.grey[900] + 25 : 'transparent'
++                            borderColor: drawerOpen ? palette.border : 'transparent',
++                            boxShadow: drawerOpen ? redesignShadows.sm : 'none'
+                         }
+                     }}
+                     ModalProps={{ keepMounted: true }}
+diff --git a/packages/ui/src/layout/MainLayout/ViewHeader.jsx b/packages/ui/src/layout/MainLayout/ViewHeader.jsx
+index 2be32d8a..23182ac5 100644
+--- a/packages/ui/src/layout/MainLayout/ViewHeader.jsx
++++ b/packages/ui/src/layout/MainLayout/ViewHeader.jsx
+@@ -5,6 +5,7 @@ import { useRef } from 'react'
+ import { IconButton, Box, OutlinedInput, Toolbar, Typography } from '@mui/material'
+ import { useTheme } from '@mui/material/styles'
+ import { StyledFab } from '@/ui-component/button/StyledFab'
++import { getRedesignPalette, redesignShadows, redesignTypography } from '@/views/redesign/styles'
+ 
+ // icons
+ import { IconSearch, IconArrowLeft, IconEdit } from '@tabler/icons-react'
+@@ -28,11 +29,14 @@ const ViewHeader = ({
+     isBackButton,
+     onBack,
+     isEditButton,
+-    onEdit
++    onEdit,
++    redesign = false,
++    controlHeight = 40
+ }) => {
+     const theme = useTheme()
+     const searchInputRef = useRef()
+     useSearchShortcut(searchInputRef)
++    const palette = getRedesignPalette(theme, theme?.customization?.isDarkMode)
+ 
+     return (
+         <Box sx={{ flexGrow: 1, py: 1.25, width: '100%' }}>
+@@ -54,8 +58,9 @@ const ViewHeader = ({
+                     <Box sx={{ display: 'flex', alignItems: 'start', flexDirection: 'column' }}>
+                         <Typography
+                             sx={{
+-                                fontSize: '1.8rem',
+-                                fontWeight: 600,
++                                ...(redesign ? redesignTypography.pageTitle : {}),
++                                fontSize: redesign ? '1.95rem' : '1.8rem',
++                                fontWeight: redesign ? 700 : 600,
+                                 display: '-webkit-box',
+                                 WebkitLineClamp: 3,
+                                 WebkitBoxOrient: 'vertical',
+@@ -71,9 +76,10 @@ const ViewHeader = ({
+                         {description && (
+                             <Typography
+                                 sx={{
+-                                    fontSize: '1rem',
+-                                    fontWeight: 500,
+-                                    mt: 2,
++                                    ...(redesign ? redesignTypography.pageSubtitle : {}),
++                                    fontSize: redesign ? '0.78rem' : '1rem',
++                                    fontWeight: redesign ? redesignTypography.pageSubtitle.fontWeight : 500,
++                                    mt: redesign ? 0.5 : 2,
+                                     display: '-webkit-box',
+                                     WebkitLineClamp: 5,
+                                     WebkitBoxOrient: 'vertical',
+@@ -93,20 +99,33 @@ const ViewHeader = ({
+                         </IconButton>
+                     )}
+                 </Box>
+-                <Box sx={{ height: 40, display: 'flex', alignItems: 'center', gap: 1 }}>
++                <Box sx={{ height: controlHeight, display: 'flex', alignItems: 'center', gap: 1 }}>
+                     {search && (
+                         <OutlinedInput
+                             inputRef={searchInputRef}
+                             size='small'
+                             sx={{
+-                                width: '325px',
++                                width: redesign ? '270px' : '325px',
+                                 height: '100%',
+                                 display: { xs: 'none', sm: 'flex' },
+-                                borderRadius: 2,
++                                borderRadius: redesign ? 2 : 2,
++                                bgcolor: redesign ? palette.surface : 'inherit',
++                                boxShadow: redesign ? redesignShadows.sm : 'none',
+ 
+                                 '& .MuiOutlinedInput-notchedOutline': {
+-                                    borderRadius: 2
+-                                }
++                                    borderRadius: redesign ? 2 : 2,
++                                    borderColor: redesign ? palette.border : undefined,
++                                    borderWidth: redesign ? '1px' : undefined
++                                },
++                                '&:hover .MuiOutlinedInput-notchedOutline': {
++                                    borderColor: redesign ? palette.border2 : undefined,
++                                    borderWidth: redesign ? '1px' : undefined
++                                },
++                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
++                                    borderColor: redesign ? palette.primary : undefined,
++                                    borderWidth: redesign ? '1px' : undefined
++                                },
++                                '&.Mui-focused': redesign ? { boxShadow: `0 0 0 2px ${palette.primaryGlow}` } : {}
+                             }}
+                             variant='outlined'
+                             placeholder={`${searchPlaceholder} ${isDesktop ? keyboardShortcut : ''}`}
+@@ -114,14 +133,14 @@ const ViewHeader = ({
+                             startAdornment={
+                                 <Box
+                                     sx={{
+-                                        color: theme.palette.grey[400],
++                                        color: redesign ? palette.textMuted : theme.palette.grey[400],
+                                         display: 'flex',
+                                         alignItems: 'center',
+                                         justifyContent: 'center',
+                                         mr: 1
+                                     }}
+                                 >
+-                                    <IconSearch style={{ color: 'inherit', width: 16, height: 16 }} />
++                                    <IconSearch style={{ color: 'inherit', width: redesign ? 14 : 16, height: redesign ? 14 : 16 }} />
+                                 </Box>
+                             }
+                             type='search'
+@@ -146,7 +165,9 @@ ViewHeader.propTypes = {
+     isBackButton: PropTypes.bool,
+     onBack: PropTypes.func,
+     isEditButton: PropTypes.bool,
+-    onEdit: PropTypes.func
++    onEdit: PropTypes.func,
++    redesign: PropTypes.bool,
++    controlHeight: PropTypes.number
+ }
+ 
+ export default ViewHeader
+diff --git a/packages/ui/src/layout/MainLayout/index.jsx b/packages/ui/src/layout/MainLayout/index.jsx
+index cab73c15..e5bd9dcc 100644
+--- a/packages/ui/src/layout/MainLayout/index.jsx
++++ b/packages/ui/src/layout/MainLayout/index.jsx
+@@ -15,8 +15,12 @@ import { SET_MENU } from '@/store/actions'
+ // styles
+ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(({ theme, open }) => ({
+     ...theme.typography.mainContent,
++    backgroundColor: theme.palette.background.default,
++    borderRadius: 0,
++    padding: 0,
++    paddingTop: '14px',
++    marginRight: 0,
+     ...(!open && {
+-        backgroundColor: 'transparent',
+         borderBottomLeftRadius: 0,
+         borderBottomRightRadius: 0,
+         transition: theme.transitions.create('all', {
+@@ -29,19 +33,18 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(({
+             width: `calc(100% - ${drawerWidth}px)`
+         },
+         [theme.breakpoints.down('md')]: {
+-            marginLeft: '20px',
++            marginLeft: 0,
+             width: `calc(100% - ${drawerWidth}px)`,
+-            padding: '16px'
++            padding: 0
+         },
+         [theme.breakpoints.down('sm')]: {
+-            marginLeft: '10px',
++            marginLeft: 0,
+             width: `calc(100% - ${drawerWidth}px)`,
+-            padding: '16px',
+-            marginRight: '10px'
++            padding: 0,
++            marginRight: 0
+         }
+     }),
+     ...(open && {
+-        backgroundColor: 'transparent',
+         transition: theme.transitions.create('all', {
+             easing: theme.transitions.easing.easeOut,
+             duration: theme.transitions.duration.enteringScreen
+diff --git a/packages/ui/src/menu-items/dashboard.js b/packages/ui/src/menu-items/dashboard.js
+index 1e2f28b4..e52f082c 100644
+--- a/packages/ui/src/menu-items/dashboard.js
++++ b/packages/ui/src/menu-items/dashboard.js
+@@ -23,7 +23,9 @@ import {
+     IconLockCheck,
+     IconFileDatabase,
+     IconShieldLock,
+-    IconListCheck
++    IconListCheck,
++    IconBriefcase,
++    IconHome
+ } from '@tabler/icons-react'
+ 
+ // constant
+@@ -51,7 +53,9 @@ const icons = {
+     IconLockCheck,
+     IconFileDatabase,
+     IconShieldLock,
+-    IconListCheck
++    IconListCheck,
++    IconBriefcase,
++    IconHome
+ }
+ 
+ // ==============================|| DASHBOARD MENU ITEMS ||============================== //
+@@ -63,7 +67,7 @@ const dashboard = {
+     children: [
+         {
+             id: 'primary',
+-            title: '',
++            title: 'BUILDER',
+             type: 'group',
+             children: [
+                 // {
+@@ -82,7 +86,8 @@ const dashboard = {
+                     url: '/agentflows',
+                     icon: icons.IconUsersGroup,
+                     breadcrumbs: true,
+-                    permission: 'agentflows:view'
++                    permission: 'agentflows:view',
++                    countBadge: '24'
+                 },
+                 // {
+                 //     id: 'executions',
+@@ -118,17 +123,19 @@ const dashboard = {
+                     url: '/tools',
+                     icon: icons.IconTool,
+                     breadcrumbs: true,
+-                    permission: 'tools:view'
++                    permission: 'tools:view',
++                    countBadge: '32'
+                 },
+                 {
+                     id: 'credentials',
+                     title: 'Connectors',
+                     type: 'item',
+                     url: '/credentials',
+-                    icon: icons.IconLock,
++                    icon: icons.IconBriefcase,
+                     breadcrumbs: true,
+-                    permission: 'credentials:view'
+-                },
++                    permission: 'credentials:view',
++                    countBadge: '8'
++                }
+                 // {
+                 //     id: 'variables',
+                 //     title: 'Variables',
+@@ -159,131 +166,27 @@ const dashboard = {
+             ]
+         },
+         {
+-            id: 'evaluations',
+-            title: 'Evaluations',
+-            type: 'group',
+-            children: [
+-                {
+-                    id: 'datasets',
+-                    title: 'Datasets',
+-                    type: 'item',
+-                    url: '/datasets',
+-                    icon: icons.IconDatabase,
+-                    breadcrumbs: true,
+-                    display: 'feat:datasets',
+-                    permission: 'datasets:view'
+-                },
+-                {
+-                    id: 'evaluators',
+-                    title: 'Evaluators',
+-                    type: 'item',
+-                    url: '/evaluators',
+-                    icon: icons.IconTestPipe,
+-                    breadcrumbs: true,
+-                    display: 'feat:evaluators',
+-                    permission: 'evaluators:view'
+-                },
+-                {
+-                    id: 'evaluations',
+-                    title: 'Evaluations',
+-                    type: 'item',
+-                    url: '/evaluations',
+-                    icon: icons.IconChartHistogram,
+-                    breadcrumbs: true,
+-                    display: 'feat:evaluations',
+-                    permission: 'evaluations:view'
+-                }
+-            ]
+-        },
+-        {
+-            id: 'management',
+-            title: 'User & Workspace Management',
++            id: 'organization',
++            title: 'ORGANIZATION',
+             type: 'group',
+             children: [
+                 {
+-                    id: 'sso',
+-                    title: 'SSO Config',
++                    id: 'shared-library',
++                    title: 'Shared Library',
+                     type: 'item',
+-                    url: '/sso-config',
+-                    icon: icons.IconShieldLock,
+-                    breadcrumbs: true,
+-                    display: 'feat:sso-config',
+-                    permission: 'sso:manage'
+-                },
+-                {
+-                    id: 'roles',
+-                    title: 'Roles',
+-                    type: 'item',
+-                    url: '/roles',
+-                    icon: icons.IconLockCheck,
+-                    breadcrumbs: true,
+-                    display: 'feat:roles',
+-                    permission: 'roles:manage'
+-                },
+-                {
+-                    id: 'users',
+-                    title: 'Users',
+-                    type: 'item',
+-                    url: '/users',
+-                    icon: icons.IconUsers,
+-                    breadcrumbs: true,
+-                    display: 'feat:users',
+-                    permission: 'users:manage'
+-                },
+-                {
+-                    id: 'workspaces',
+-                    title: 'Workspaces',
+-                    type: 'item',
+-                    url: '/workspaces',
+-                    icon: icons.IconStack2,
+-                    breadcrumbs: true,
+-                    display: 'feat:workspaces',
+-                    permission: 'workspace:view'
+-                },
+-                {
+-                    id: 'login-activity',
+-                    title: 'Login Activity',
+-                    type: 'item',
+-                    url: '/login-activity',
+-                    icon: icons.IconClipboardList,
+-                    breadcrumbs: true,
+-                    display: 'feat:login-activity',
+-                    permission: 'loginActivity:view'
+-                }
+-            ]
+-        },
+-        {
+-            id: 'others',
+-            title: 'Others',
+-            type: 'group',
+-            children: [
+-                {
+-                    id: 'logs',
+-                    title: 'Logs',
+-                    type: 'item',
+-                    url: '/logs',
+-                    icon: icons.IconList,
++                    url: '/agentflows',
++                    icon: icons.IconHome,
+                     breadcrumbs: true,
+-                    display: 'feat:logs',
+-                    permission: 'logs:view'
++                    disabled: true
+                 },
+-                // {
+-                //     id: 'files',
+-                //     title: 'Files',
+-                //     type: 'item',
+-                //     url: '/files',
+-                //     icon: icons.IconFileDatabase,
+-                //     breadcrumbs: true,
+-                //     display: 'feat:files',
+-                // },
+                 {
+-                    id: 'account',
+-                    title: 'Account Settings',
++                    id: 'team-access',
++                    title: 'Team Access',
+                     type: 'item',
+-                    url: '/account',
+-                    icon: icons.IconSettings,
++                    url: '/agentflows',
++                    icon: icons.IconUsersGroup,
+                     breadcrumbs: true,
+-                    display: 'feat:account'
++                    disabled: true
+                 }
+             ]
+         }
+diff --git a/packages/ui/src/ui-component/cards/ItemCard.jsx b/packages/ui/src/ui-component/cards/ItemCard.jsx
+index 53b7e6c7..68ffa393 100644
+--- a/packages/ui/src/ui-component/cards/ItemCard.jsx
++++ b/packages/ui/src/ui-component/cards/ItemCard.jsx
+@@ -8,6 +8,7 @@ import { Box, Grid, Tooltip, Typography, useTheme } from '@mui/material'
+ // project imports
+ import MainCard from '@/ui-component/cards/MainCard'
+ import MoreItemsTooltip from '../tooltip/MoreItemsTooltip'
++import { getRedesignPalette, redesignShadows } from '@/views/redesign/styles'
+ 
+ const CardWrapper = styled(MainCard)(({ theme }) => ({
+     background: theme.palette.card.main,
+@@ -30,13 +31,31 @@ const CardWrapper = styled(MainCard)(({ theme }) => ({
+ 
+ // ===========================|| CONTRACT CARD ||=========================== //
+ 
+-const ItemCard = ({ data, images, icons, onClick }) => {
++const ItemCard = ({ data, images, icons, onClick, redesign = false }) => {
+     const theme = useTheme()
+     const customization = useSelector((state) => state.customization)
++    const palette = getRedesignPalette(theme, customization.isDarkMode)
+ 
+     return (
+-        <CardWrapper content={false} onClick={onClick} sx={{ border: 1, borderColor: theme.palette.grey[900] + 25, borderRadius: 2 }}>
+-            <Box sx={{ height: '100%', p: 2.25 }}>
++        <CardWrapper
++            content={false}
++            onClick={onClick}
++            sx={{
++                border: 1,
++                borderColor: redesign ? palette.border : theme.palette.grey[900] + 25,
++                borderRadius: redesign ? 3 : 2,
++                background: redesign ? palette.surface : undefined,
++                boxShadow: redesign ? redesignShadows.sm : undefined,
++                '&:hover': redesign
++                    ? {
++                          borderColor: palette.border2,
++                          boxShadow: redesignShadows.lg,
++                          transform: 'translateY(-2px)'
++                      }
++                    : undefined
++            }}
++        >
++            <Box sx={{ height: '100%', p: redesign ? 2.5 : 2.25 }}>
+                 <Grid container justifyContent='space-between' direction='column' sx={{ height: '100%', gap: 3 }}>
+                     <Box display='flex' flexDirection='column' sx={{ width: '100%' }}>
+                         <div
+@@ -80,8 +99,8 @@ const ItemCard = ({ data, images, icons, onClick }) => {
+                             <Typography
+                                 sx={{
+                                     display: '-webkit-box',
+-                                    fontSize: '1.25rem',
+-                                    fontWeight: 500,
++                                    fontSize: redesign ? '0.95rem' : '1.25rem',
++                                    fontWeight: redesign ? 700 : 500,
+                                     WebkitLineClamp: 2,
+                                     WebkitBoxOrient: 'vertical',
+                                     textOverflow: 'ellipsis',
+@@ -100,7 +119,10 @@ const ItemCard = ({ data, images, icons, onClick }) => {
+                                     WebkitLineClamp: 3,
+                                     WebkitBoxOrient: 'vertical',
+                                     textOverflow: 'ellipsis',
+-                                    overflow: 'hidden'
++                                    overflow: 'hidden',
++                                    fontSize: redesign ? '0.78rem' : undefined,
++                                    lineHeight: redesign ? 1.55 : undefined,
++                                    color: redesign ? palette.textDim : undefined
+                                 }}
+                             >
+                                 {data.description}
+@@ -187,7 +209,8 @@ ItemCard.propTypes = {
+     data: PropTypes.object,
+     images: PropTypes.array,
+     icons: PropTypes.array,
+-    onClick: PropTypes.func
++    onClick: PropTypes.func,
++    redesign: PropTypes.bool
+ }
+ 
+ export default ItemCard
+diff --git a/packages/ui/src/ui-component/pagination/TablePagination.jsx b/packages/ui/src/ui-component/pagination/TablePagination.jsx
+index ef6059cd..aaba3f64 100644
+--- a/packages/ui/src/ui-component/pagination/TablePagination.jsx
++++ b/packages/ui/src/ui-component/pagination/TablePagination.jsx
+@@ -3,13 +3,15 @@ import { useEffect, useState } from 'react'
+ import { useTheme } from '@mui/material/styles'
+ import { useSelector } from 'react-redux'
+ import PropTypes from 'prop-types'
++import { getRedesignPalette, redesignShadows } from '@/views/redesign/styles'
+ 
+ export const DEFAULT_ITEMS_PER_PAGE = 12
+ 
+-const TablePagination = ({ currentPage, limit, total, onChange }) => {
++const TablePagination = ({ currentPage, limit, total, onChange, redesign = false }) => {
+     const theme = useTheme()
+     const customization = useSelector((state) => state.customization)
+     const borderColor = theme.palette.grey[900] + 25
++    const palette = getRedesignPalette(theme, customization.isDarkMode)
+ 
+     const [itemsPerPage, setItemsPerPage] = useState(DEFAULT_ITEMS_PER_PAGE)
+     const [activePage, setActivePage] = useState(1)
+@@ -40,16 +42,55 @@ const TablePagination = ({ currentPage, limit, total, onChange }) => {
+     }
+ 
+     return (
+-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
++        <Box
++            sx={{
++                display: 'flex',
++                justifyContent: 'space-between',
++                alignItems: 'center',
++                mt: 2,
++                ...(redesign
++                    ? {
++                          gap: 2,
++                          '& .MuiPagination-ul': { gap: 0.5 },
++                          '& .MuiPaginationItem-root': {
++                              borderRadius: 2,
++                              border: `1px solid ${palette.border}`,
++                              color: palette.textDim,
++                              minWidth: 30,
++                              height: 30,
++                              fontSize: '0.75rem'
++                          },
++                          '& .MuiPaginationItem-root.Mui-selected': {
++                              backgroundColor: palette.primary,
++                              color: '#fff',
++                              borderColor: palette.primary,
++                              boxShadow: redesignShadows.sm
++                          }
++                      }
++                    : {})
++            }}
++        >
+             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+-                <Typography variant='body2'>Items per page:</Typography>
++                <Typography variant='body2' sx={redesign ? { fontSize: '0.8rem', color: palette.textDim } : {}}>
++                    Items per page:
++                </Typography>
+                 <FormControl
+                     variant='outlined'
+                     size='small'
+                     sx={{
+                         minWidth: 80,
++                        ...(redesign
++                            ? {
++                                  '& .MuiOutlinedInput-root': {
++                                      borderRadius: 2,
++                                      backgroundColor: palette.surface,
++                                      boxShadow: redesignShadows.sm
++                                  },
++                                  '& .MuiSelect-select': { fontSize: '0.8rem', fontWeight: 600 }
++                              }
++                            : {}),
+                         '& .MuiOutlinedInput-notchedOutline': {
+-                            borderColor: borderColor
++                            borderColor: redesign ? palette.border : borderColor
+                         },
+                         '& .MuiSvgIcon-root': {
+                             color: customization.isDarkMode ? '#fff' : 'inherit'
+@@ -65,7 +106,7 @@ const TablePagination = ({ currentPage, limit, total, onChange }) => {
+                 </FormControl>
+             </Box>
+             {totalItems > 0 && (
+-                <Typography variant='body2'>
++                <Typography variant='body2' sx={redesign ? { fontSize: '0.8rem', color: palette.textMuted } : {}}>
+                     Items {activePage * itemsPerPage - itemsPerPage + 1} to{' '}
+                     {activePage * itemsPerPage > totalItems ? totalItems : activePage * itemsPerPage} of {totalItems}
+                 </Typography>
+@@ -79,7 +120,8 @@ TablePagination.propTypes = {
+     onChange: PropTypes.func.isRequired,
+     currentPage: PropTypes.number,
+     limit: PropTypes.number,
+-    total: PropTypes.number
++    total: PropTypes.number,
++    redesign: PropTypes.bool
+ }
+ 
+ export default TablePagination
+diff --git a/packages/ui/src/ui-component/table/FlowListTable.jsx b/packages/ui/src/ui-component/table/FlowListTable.jsx
+index 2d1e0570..7838613d 100644
+--- a/packages/ui/src/ui-component/table/FlowListTable.jsx
++++ b/packages/ui/src/ui-component/table/FlowListTable.jsx
+@@ -26,6 +26,7 @@ import { Link } from 'react-router-dom'
+ import { useAuth } from '@/hooks/useAuth'
+ 
+ import MoreItemsTooltip from '../tooltip/MoreItemsTooltip'
++import { getRedesignPalette, redesignShadows } from '@/views/redesign/styles'
+ 
+ const StyledTableCell = styled(TableCell)(({ theme }) => ({
+     borderColor: theme.palette.grey[900] + 25,
+@@ -61,7 +62,8 @@ export const FlowListTable = ({
+     isAgentCanvas,
+     isAgentflowV2,
+     currentPage,
+-    pageLimit
++    pageLimit,
++    redesign = false
+ }) => {
+     const { hasPermission } = useAuth()
+     const isActionsAvailable = isAgentCanvas
+@@ -69,6 +71,7 @@ export const FlowListTable = ({
+         : hasPermission('chatflows:update,chatflows:delete,chatflows:config,chatflows:domains,templates:flowexport,chatflows:export')
+     const theme = useTheme()
+     const customization = useSelector((state) => state.customization)
++    const palette = getRedesignPalette(theme, customization.isDarkMode)
+ 
+     const localStorageKeyOrder = getLocalStorageKeyName('order', isAgentCanvas)
+     const localStorageKeyOrderBy = getLocalStorageKeyName('orderBy', isAgentCanvas)
+@@ -108,11 +111,23 @@ export const FlowListTable = ({
+ 
+     return (
+         <>
+-            <TableContainer sx={{ border: 1, borderColor: theme.palette.grey[900] + 25, borderRadius: 2 }} component={Paper}>
++            <TableContainer
++                sx={{
++                    border: 1,
++                    borderColor: redesign ? palette.border : theme.palette.grey[900] + 25,
++                    borderRadius: redesign ? 3 : 2,
++                    boxShadow: redesign ? redesignShadows.sm : 'none'
++                }}
++                component={Paper}
++            >
+                 <Table sx={{ minWidth: 650 }} size='small' aria-label='a dense table'>
+                     <TableHead
+                         sx={{
+-                            backgroundColor: customization.isDarkMode ? theme.palette.common.black : theme.palette.grey[100],
++                            backgroundColor: redesign
++                                ? palette.surface2
++                                : customization.isDarkMode
++                                ? theme.palette.common.black
++                                : theme.palette.grey[100],
+                             height: 56
+                         }}
+                     >
+@@ -361,5 +376,6 @@ FlowListTable.propTypes = {
+     isAgentCanvas: PropTypes.bool,
+     isAgentflowV2: PropTypes.bool,
+     currentPage: PropTypes.number,
+-    pageLimit: PropTypes.number
++    pageLimit: PropTypes.number,
++    redesign: PropTypes.bool
+ }
+diff --git a/packages/ui/src/ui-component/table/ToolsListTable.jsx b/packages/ui/src/ui-component/table/ToolsListTable.jsx
+index f02e6366..4380ed42 100644
+--- a/packages/ui/src/ui-component/table/ToolsListTable.jsx
++++ b/packages/ui/src/ui-component/table/ToolsListTable.jsx
+@@ -15,6 +15,7 @@ import {
+     Typography,
+     useTheme
+ } from '@mui/material'
++import { getRedesignPalette, redesignShadows } from '@/views/redesign/styles'
+ 
+ const StyledTableCell = styled(TableCell)(({ theme }) => ({
+     borderColor: theme.palette.grey[900] + 25,
+@@ -35,17 +36,30 @@ const StyledTableRow = styled(TableRow)(() => ({
+     }
+ }))
+ 
+-export const ToolsTable = ({ data, isLoading, onSelect }) => {
++export const ToolsTable = ({ data, isLoading, onSelect, redesign = false }) => {
+     const theme = useTheme()
+     const customization = useSelector((state) => state.customization)
++    const palette = getRedesignPalette(theme, customization.isDarkMode)
+ 
+     return (
+         <>
+-            <TableContainer sx={{ border: 1, borderColor: theme.palette.grey[900] + 25, borderRadius: 2 }} component={Paper}>
++            <TableContainer
++                sx={{
++                    border: 1,
++                    borderColor: redesign ? palette.border : theme.palette.grey[900] + 25,
++                    borderRadius: redesign ? 3 : 2,
++                    boxShadow: redesign ? redesignShadows.sm : 'none'
++                }}
++                component={Paper}
++            >
+                 <Table sx={{ minWidth: 650 }} size='small' aria-label='a dense table'>
+                     <TableHead
+                         sx={{
+-                            backgroundColor: customization.isDarkMode ? theme.palette.common.black : theme.palette.grey[100],
++                            backgroundColor: redesign
++                                ? palette.surface2
++                                : customization.isDarkMode
++                                ? theme.palette.common.black
++                                : theme.palette.grey[100],
+                             height: 56
+                         }}
+                     >
+@@ -140,5 +154,6 @@ export const ToolsTable = ({ data, isLoading, onSelect }) => {
+ ToolsTable.propTypes = {
+     data: PropTypes.array,
+     isLoading: PropTypes.bool,
+-    onSelect: PropTypes.func
++    onSelect: PropTypes.func,
++    redesign: PropTypes.bool
+ }
+diff --git a/packages/ui/src/views/agentflows/index.jsx b/packages/ui/src/views/agentflows/index.jsx
+index 00e31d28..b2d8d965 100644
+--- a/packages/ui/src/views/agentflows/index.jsx
++++ b/packages/ui/src/views/agentflows/index.jsx
+@@ -1,14 +1,14 @@
+ import { useEffect, useState } from 'react'
+ import { useNavigate } from 'react-router-dom'
+ import { useSelector } from 'react-redux'
++import PropTypes from 'prop-types'
+ 
+ // material-ui
+-import { Chip, Box, Stack, ToggleButton, ToggleButtonGroup, IconButton } from '@mui/material'
++import { Chip, Box, Stack, ToggleButton, ToggleButtonGroup, IconButton, Paper, Typography, Button, MenuItem, Select } from '@mui/material'
+ import { useTheme } from '@mui/material/styles'
+ 
+ // project imports
+ import MainCard from '@/ui-component/cards/MainCard'
+-import ItemCard from '@/ui-component/cards/ItemCard'
+ import { gridSpacing } from '@/store/constant'
+ import AgentsEmptySVG from '@/assets/images/agents_empty.svg'
+ import ConfirmDialog from '@/ui-component/dialog/ConfirmDialog'
+@@ -17,6 +17,8 @@ import ViewHeader from '@/layout/MainLayout/ViewHeader'
+ import ErrorBoundary from '@/ErrorBoundary'
+ import { StyledPermissionButton } from '@/ui-component/button/RBACButtons'
+ import TablePagination, { DEFAULT_ITEMS_PER_PAGE } from '@/ui-component/pagination/TablePagination'
++import MoreItemsTooltip from '@/ui-component/tooltip/MoreItemsTooltip'
++import { getRedesignPalette, redesignShadows, redesignTypography } from '@/views/redesign/styles'
+ 
+ // API
+ import chatflowsApi from '@/api/chatflows'
+@@ -29,14 +31,197 @@ import { baseURL, AGENTFLOW_ICONS } from '@/store/constant'
+ import { useError } from '@/store/context/ErrorContext'
+ 
+ // icons
+-import { IconPlus, IconLayoutGrid, IconList, IconX, IconAlertTriangle } from '@tabler/icons-react'
++import { IconPlus, IconLayoutGrid, IconList, IconX, IconAlertTriangle, IconPencil, IconPlayerPlayFilled } from '@tabler/icons-react'
+ 
+ // ==============================|| AGENTS ||============================== //
+ 
++const AgentPipelineCard = ({ data, images, icons, palette, onClick }) => {
++    const nodes = [
++        ...(images || []).map((item) => ({ label: item.label, kind: 'image', src: item.imageSrc })),
++        ...(icons || []).map((item) => ({ label: item.name, kind: 'icon', icon: item.icon, color: item.color }))
++    ]
++    const tags = nodes.slice(0, 3)
++    const remainingTags = nodes.slice(3).map((node) => ({ label: node.label }))
++    const moreCount = Math.max(0, nodes.length - 3)
++    const seed = (data?.id || data?.name || '').split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
++    const dummyRuns = (seed % 3800) + 120
++    const dummyAvg = (((seed % 95) + 10) / 10).toFixed(1)
++    const titleIcons = ['⚡', '🏥', '📊', '👤', '🔒', '📦', '🧠', '🛠️', '💬', '🧩']
++    const titleIcon = titleIcons[seed % titleIcons.length]
++
++    return (
++        <Paper
++            onClick={onClick}
++            sx={{
++                borderRadius: 3,
++                border: `1px solid ${palette.border}`,
++                boxShadow: redesignShadows.sm,
++                p: 0,
++                overflow: 'hidden',
++                position: 'relative',
++                cursor: 'pointer',
++                '&::before': {
++                    content: '""',
++                    position: 'absolute',
++                    top: 0,
++                    left: 0,
++                    right: 0,
++                    height: 3,
++                    background: 'linear-gradient(90deg, #e8633a, #1b5e8e)',
++                    opacity: 0,
++                    transition: 'opacity 0.18s ease'
++                },
++                '&:hover': { boxShadow: redesignShadows.lg, borderColor: palette.border2, transform: 'translateY(-1px)' },
++                '&:hover::before': { opacity: 1 }
++            }}
++        >
++            <Box sx={{ p: 2 }}>
++                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
++                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, maxWidth: '78%' }}>
++                        <Box
++                            sx={{
++                                width: 36,
++                                height: 36,
++                                borderRadius: 2,
++                                bgcolor: palette.surface2,
++                                border: `1px solid ${palette.border}`,
++                                display: 'flex',
++                                alignItems: 'center',
++                                justifyContent: 'center',
++                                fontSize: '1.2rem',
++                                flexShrink: 0
++                            }}
++                        >
++                            {titleIcon}
++                        </Box>
++                        <Box sx={{ minWidth: 0 }}>
++                            <Typography sx={{ fontSize: '0.94rem', fontWeight: 700, color: palette.text }} noWrap>
++                                {data.name}
++                            </Typography>
++                            <Typography
++                                sx={{ ...redesignTypography.eyebrow, color: palette.textMuted, mt: 0.25, fontSize: '0.6rem' }}
++                                noWrap
++                            >
++                                WORKFLOW · ORCHESTRATION
++                            </Typography>
++                        </Box>
++                    </Box>
++                    <Chip
++                        size='small'
++                        label='Active'
++                        sx={{ height: 18, bgcolor: '#dcfce7', color: '#16a34a', fontWeight: 700, fontSize: '0.62rem' }}
++                    />
++                </Box>
++                <Typography
++                    sx={{
++                        fontSize: '0.78rem',
++                        lineHeight: 1.5,
++                        color: palette.textDim,
++                        minHeight: 38,
++                        display: '-webkit-box',
++                        WebkitLineClamp: 2,
++                        WebkitBoxOrient: 'vertical',
++                        overflow: 'hidden'
++                    }}
++                >
++                    {data.description || 'Orchestrates multi-agent workflow with reusable tools and connectors.'}
++                </Typography>
++                <Stack direction='row' spacing={0.75} sx={{ mt: 1.25, flexWrap: 'wrap', rowGap: 0.75 }}>
++                    {tags.map((tag, idx) => (
++                        <Chip
++                            key={idx}
++                            size='small'
++                            label={tag.label}
++                            sx={{
++                                height: 21,
++                                borderRadius: 1.5,
++                                bgcolor: palette.surface2,
++                                border: `1px solid ${palette.border}`,
++                                fontSize: '0.68rem'
++                            }}
++                        />
++                    ))}
++                    {moreCount > 0 && (
++                        <MoreItemsTooltip images={remainingTags}>
++                            <Chip
++                                size='small'
++                                label={`+${moreCount} more`}
++                                sx={{
++                                    height: 21,
++                                    borderRadius: 1.5,
++                                    bgcolor: palette.primaryGlow,
++                                    color: palette.primary,
++                                    fontWeight: 700,
++                                    fontSize: '0.68rem',
++                                    cursor: 'pointer'
++                                }}
++                            />
++                        </MoreItemsTooltip>
++                    )}
++                </Stack>
++            </Box>
++            <Box
++                sx={{
++                    borderTop: `1px solid ${palette.border}`,
++                    px: 2,
++                    py: 1.25,
++                    display: 'flex',
++                    justifyContent: 'space-between',
++                    alignItems: 'center'
++                }}
++            >
++                <Typography sx={{ fontSize: '0.72rem', color: palette.textMuted }}>
++                    <strong style={{ color: palette.text }}>{dummyRuns.toLocaleString()}</strong> runs &nbsp;{' '}
++                    <strong style={{ color: palette.text }}>{dummyAvg}s</strong> avg
++                </Typography>
++                <Stack direction='row' spacing={0.75}>
++                    <Button
++                        size='small'
++                        sx={{
++                            minWidth: 30,
++                            width: 30,
++                            height: 28,
++                            p: 0,
++                            borderRadius: 1.5,
++                            border: `1px solid ${palette.border}`,
++                            color: palette.textMuted
++                        }}
++                    >
++                        <IconPencil size={13} />
++                    </Button>
++                    <Button
++                        size='small'
++                        sx={{
++                            minWidth: 30,
++                            width: 30,
++                            height: 28,
++                            p: 0,
++                            borderRadius: 1.5,
++                            border: `1px solid ${palette.border}`,
++                            color: palette.textMuted
++                        }}
++                    >
++                        <IconPlayerPlayFilled size={13} />
++                    </Button>
++                </Stack>
++            </Box>
++        </Paper>
++    )
++}
++
++AgentPipelineCard.propTypes = {
++    data: PropTypes.object,
++    images: PropTypes.array,
++    icons: PropTypes.array,
++    palette: PropTypes.object,
++    onClick: PropTypes.func
++}
++
+ const Agentflows = () => {
+     const navigate = useNavigate()
+     const theme = useTheme()
+     const customization = useSelector((state) => state.customization)
++    const palette = getRedesignPalette(theme, customization.isDarkMode)
+ 
+     const [isLoading, setLoading] = useState(true)
+     const [images, setImages] = useState({})
+@@ -48,6 +233,7 @@ const Agentflows = () => {
+     const [view, setView] = useState(localStorage.getItem('flowDisplayStyle') || 'card')
+     const [agentflowVersion, setAgentflowVersion] = useState(localStorage.getItem('agentFlowVersion') || 'v2')
+     const [showDeprecationNotice, setShowDeprecationNotice] = useState(true)
++    const [selectedFilter, setSelectedFilter] = useState('All')
+ 
+     /* Table Pagination */
+     const [currentPage, setCurrentPage] = useState(1)
+@@ -169,12 +355,54 @@ const Agentflows = () => {
+     }, [getAllAgentflows.data])
+ 
+     return (
+-        <MainCard>
++        <MainCard sx={{ background: palette.pageBg, boxShadow: 'none' }}>
+             {error ? (
+                 <ErrorBoundary error={error} />
+             ) : (
+-                <Stack flexDirection='column' sx={{ gap: 3 }}>
++                <Stack flexDirection='column' sx={{ gap: 2.2 }}>
++                    <Box display='grid' gridTemplateColumns='repeat(4, 1fr)' gap={1.2}>
++                        {[
++                            { label: 'Total Pipelines', value: '24', meta: '↑ 4 this week' },
++                            { label: 'Active Runs', value: '7', meta: 'live' },
++                            { label: 'Executions Today', value: '312', meta: '↑ 18%' },
++                            { label: 'Avg. Success Rate', value: '98.2%', meta: 'uptime' }
++                        ].map((stat) => (
++                            <Box
++                                key={stat.label}
++                                sx={{
++                                    border: 1,
++                                    borderColor: palette.border,
++                                    bgcolor: palette.surface,
++                                    borderRadius: 3,
++                                    p: 1.35,
++                                    boxShadow: redesignShadows.sm
++                                }}
++                            >
++                                <Box sx={{ ...redesignTypography.eyebrow, color: palette.textMuted, mb: 0.7, fontSize: '0.58rem' }}>
++                                    {stat.label}
++                                </Box>
++                                <Box sx={{ fontSize: '1.05rem', fontWeight: 700, lineHeight: 1.1, color: palette.text }}>{stat.value}</Box>
++                                <Box sx={{ fontSize: '0.64rem', fontWeight: 600, color: palette.textMuted, mt: 0.25 }}>{stat.meta}</Box>
++                                <Box sx={{ height: 2.5, borderRadius: 2, bgcolor: palette.surface2, mt: 0.9, overflow: 'hidden' }}>
++                                    <Box
++                                        sx={{
++                                            width: stat.label === 'Total Pipelines' ? '60%' : stat.label === 'Active Runs' ? '29%' : '78%',
++                                            height: '100%',
++                                            bgcolor:
++                                                stat.label === 'Active Runs'
++                                                    ? palette.primary
++                                                    : stat.label === 'Avg. Success Rate'
++                                                    ? '#16a34a'
++                                                    : palette.accent
++                                        }}
++                                    />
++                                </Box>
++                            </Box>
++                        ))}
++                    </Box>
+                     <ViewHeader
++                        redesign
++                        controlHeight={34}
+                         onSearchChange={onSearchChange}
+                         search={true}
+                         searchPlaceholder='Search Name or Category'
+@@ -182,7 +410,7 @@ const Agentflows = () => {
+                         description='Multi-agent systems, workflow orchestration'
+                     >
+                         <ToggleButtonGroup
+-                            sx={{ borderRadius: 2, maxHeight: 40 }}
++                            sx={{ borderRadius: 2, maxHeight: 34 }}
+                             value={agentflowVersion}
+                             color='primary'
+                             exclusive
+@@ -190,9 +418,11 @@ const Agentflows = () => {
+                         >
+                             {/* <ToggleButton
+                                 sx={{
+-                                    borderColor: theme.palette.grey[900] + 25,
++                                    borderColor: palette.border,
+                                     borderRadius: 2,
+-                                    color: customization.isDarkMode ? 'white' : 'inherit'
++                                    color: palette.textDim,
++                                    bgcolor: palette.surface,
++                                    boxShadow: redesignShadows.sm
+                                 }}
+                                 variant='contained'
+                                 value='v2'
+@@ -203,9 +433,11 @@ const Agentflows = () => {
+                             </ToggleButton>
+                             <ToggleButton
+                                 sx={{
+-                                    borderColor: theme.palette.grey[900] + 25,
++                                    borderColor: palette.border,
+                                     borderRadius: 2,
+-                                    color: customization.isDarkMode ? 'white' : 'inherit'
++                                    color: palette.textDim,
++                                    bgcolor: palette.surface,
++                                    boxShadow: redesignShadows.sm
+                                 }}
+                                 variant='contained'
+                                 value='v1'
+@@ -215,7 +447,7 @@ const Agentflows = () => {
+                             </ToggleButton> */}
+                         </ToggleButtonGroup>
+                         <ToggleButtonGroup
+-                            sx={{ borderRadius: 2, maxHeight: 40 }}
++                            sx={{ borderRadius: 2, maxHeight: 34, bgcolor: palette.surface2, border: `1px solid ${palette.border}` }}
+                             value={view}
+                             disabled={total === 0}
+                             color='primary'
+@@ -226,37 +458,95 @@ const Agentflows = () => {
+                                 sx={{
+                                     borderColor: theme.palette.grey[900] + 25,
+                                     borderRadius: 2,
+-                                    color: customization.isDarkMode ? 'white' : 'inherit'
++                                    color: palette.textDim,
++                                    px: 1,
++                                    minWidth: 30,
++                                    '&.Mui-selected': { bgcolor: palette.surface, color: palette.primary, boxShadow: redesignShadows.sm }
+                                 }}
+                                 variant='contained'
+                                 value='card'
+                                 title='Card View'
+                             >
+-                                <IconLayoutGrid />
++                                <IconLayoutGrid size={15} />
+                             </ToggleButton>
+                             <ToggleButton
+                                 sx={{
+                                     borderColor: theme.palette.grey[900] + 25,
+                                     borderRadius: 2,
+-                                    color: customization.isDarkMode ? 'white' : 'inherit'
++                                    color: palette.textDim,
++                                    px: 1,
++                                    minWidth: 30,
++                                    '&.Mui-selected': { bgcolor: palette.surface, color: palette.primary, boxShadow: redesignShadows.sm }
+                                 }}
+                                 variant='contained'
+                                 value='list'
+                                 title='List View'
+                             >
+-                                <IconList />
++                                <IconList size={15} />
+                             </ToggleButton>
+                         </ToggleButtonGroup>
+                         <StyledPermissionButton
+                             permissionId={'agentflows:create'}
+                             variant='contained'
+                             onClick={addNew}
+-                            startIcon={<IconPlus />}
+-                            sx={{ borderRadius: 2, height: 40 }}
++                            startIcon={<IconPlus size={14} />}
++                            sx={{ borderRadius: 2, height: 34, boxShadow: redesignShadows.sm, px: 1.5, fontSize: '0.74rem' }}
+                         >
+                             Add New
+                         </StyledPermissionButton>
+                     </ViewHeader>
++                    <Stack direction='row' spacing={0.75} sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
++                        {['All', 'Active', 'Draft', 'Scheduled', 'Error'].map((chip) => (
++                            <Chip
++                                key={chip}
++                                label={chip}
++                                clickable
++                                onClick={() => setSelectedFilter(chip)}
++                                sx={{
++                                    borderRadius: 5,
++                                    border: 1,
++                                    borderColor: selectedFilter === chip ? palette.accent : palette.border,
++                                    bgcolor: selectedFilter === chip ? palette.accentGlow : palette.surface,
++                                    color: selectedFilter === chip ? palette.accent : palette.textDim,
++                                    fontSize: '0.7rem',
++                                    fontWeight: selectedFilter === chip ? 600 : 500,
++                                    height: 26
++                                }}
++                            />
++                        ))}
++                        {['Salesforce', 'HR', 'Finance', 'IT Ops'].map((chip) => (
++                            <Chip
++                                key={chip}
++                                label={chip}
++                                clickable
++                                sx={{
++                                    borderRadius: 5,
++                                    border: `1px solid ${palette.border}`,
++                                    bgcolor: palette.surface,
++                                    color: palette.textDim,
++                                    fontSize: '0.7rem',
++                                    height: 26
++                                }}
++                            />
++                        ))}
++                        <Select
++                            size='small'
++                            defaultValue='Sort: Recently Updated'
++                            sx={{
++                                ml: 'auto',
++                                height: 28,
++                                borderRadius: 2,
++                                bgcolor: palette.surface,
++                                fontSize: '0.74rem',
++                                boxShadow: redesignShadows.sm,
++                                '& .MuiOutlinedInput-notchedOutline': { borderColor: palette.border }
++                            }}
++                        >
++                            <MenuItem value='Sort: Recently Updated'>Sort: Recently Updated</MenuItem>
++                            <MenuItem value='Sort: Name A-Z'>Sort: Name A-Z</MenuItem>
++                            <MenuItem value='Sort: Most Runs'>Sort: Most Runs</MenuItem>
++                        </Select>
++                    </Stack>
+ 
+                     {/* Deprecation Notice For V1 */}
+                     {agentflowVersion === 'v1' && showDeprecationNotice && (
+@@ -305,17 +595,19 @@ const Agentflows = () => {
+                             {!view || view === 'card' ? (
+                                 <Box display='grid' gridTemplateColumns='repeat(3, 1fr)' gap={gridSpacing}>
+                                     {getAllAgentflows.data?.data.filter(filterFlows).map((data, index) => (
+-                                        <ItemCard
++                                        <AgentPipelineCard
+                                             key={index}
+                                             onClick={() => goToCanvas(data)}
+                                             data={data}
+                                             images={images[data.id]}
+                                             icons={icons[data.id]}
++                                            palette={palette}
+                                         />
+                                     ))}
+                                 </Box>
+                             ) : (
+                                 <FlowListTable
++                                    redesign
+                                     isAgentCanvas={true}
+                                     isAgentflowV2={agentflowVersion === 'v2'}
+                                     data={getAllAgentflows.data?.data}
+@@ -330,7 +622,7 @@ const Agentflows = () => {
+                                 />
+                             )}
+                             {/* Pagination and Page Size Controls */}
+-                            <TablePagination currentPage={currentPage} limit={pageLimit} total={total} onChange={onChange} />
++                            <TablePagination redesign currentPage={currentPage} limit={pageLimit} total={total} onChange={onChange} />
+                         </>
+                     )}
+ 
+diff --git a/packages/ui/src/views/credentials/index.jsx b/packages/ui/src/views/credentials/index.jsx
+index 4206b1f2..7f880d2f 100644
+--- a/packages/ui/src/views/credentials/index.jsx
++++ b/packages/ui/src/views/credentials/index.jsx
+@@ -1,29 +1,13 @@
+ import { useEffect, useState } from 'react'
+ import { useDispatch, useSelector } from 'react-redux'
+ import { enqueueSnackbar as enqueueSnackbarAction, closeSnackbar as closeSnackbarAction } from '@/store/actions'
+-import moment from 'moment'
+ 
+ // material-ui
+-import { styled } from '@mui/material/styles'
+-import { tableCellClasses } from '@mui/material/TableCell'
+-import {
+-    Button,
+-    Box,
+-    Skeleton,
+-    Stack,
+-    Table,
+-    TableBody,
+-    TableCell,
+-    TableContainer,
+-    TableHead,
+-    TableRow,
+-    Paper,
+-    useTheme
+-} from '@mui/material'
++import { Button, Box, Chip, Skeleton, Stack, Paper, Typography, useTheme } from '@mui/material'
+ 
+ // project imports
+ import MainCard from '@/ui-component/cards/MainCard'
+-import { PermissionIconButton, StyledPermissionButton } from '@/ui-component/button/RBACButtons'
++import { StyledPermissionButton } from '@/ui-component/button/RBACButtons'
+ import CredentialListDialog from './CredentialListDialog'
+ import ConfirmDialog from '@/ui-component/dialog/ConfirmDialog'
+ import AddEditCredentialDialog from './AddEditCredentialDialog'
+@@ -41,7 +25,7 @@ import useConfirm from '@/hooks/useConfirm'
+ import useNotifier from '@/utils/useNotifier'
+ 
+ // Icons
+-import { IconTrash, IconEdit, IconX, IconPlus, IconShare } from '@tabler/icons-react'
++import { IconX, IconPlus } from '@tabler/icons-react'
+ import CredentialEmptySVG from '@/assets/images/credential_empty.svg'
+ import keySVG from '@/assets/images/key.svg'
+ 
+@@ -50,32 +34,14 @@ import { baseURL } from '@/store/constant'
+ import { SET_COMPONENT_CREDENTIALS } from '@/store/actions'
+ import { useError } from '@/store/context/ErrorContext'
+ import ShareWithWorkspaceDialog from '@/ui-component/dialog/ShareWithWorkspaceDialog'
+-
+-const StyledTableCell = styled(TableCell)(({ theme }) => ({
+-    borderColor: theme.palette.grey[900] + 25,
+-    padding: '6px 16px',
+-
+-    [`&.${tableCellClasses.head}`]: {
+-        color: theme.palette.grey[900]
+-    },
+-    [`&.${tableCellClasses.body}`]: {
+-        fontSize: 14,
+-        height: 64
+-    }
+-}))
+-
+-const StyledTableRow = styled(TableRow)(() => ({
+-    // hide last border
+-    '&:last-child td, &:last-child th': {
+-        border: 0
+-    }
+-}))
++import { getRedesignPalette, redesignShadows, redesignTypography } from '@/views/redesign/styles'
+ 
+ // ==============================|| Credentials ||============================== //
+ 
+ const Credentials = () => {
+     const theme = useTheme()
+     const customization = useSelector((state) => state.customization)
++    const palette = getRedesignPalette(theme, customization.isDarkMode)
+     const dispatch = useDispatch()
+     useNotifier()
+     const { error, setError } = useError()
+@@ -93,6 +59,7 @@ const Credentials = () => {
+ 
+     const [showShareCredentialDialog, setShowShareCredentialDialog] = useState(false)
+     const [shareCredentialDialogProps, setShareCredentialDialogProps] = useState({})
++    const [selectedCategory, setSelectedCategory] = useState('All')
+ 
+     const { confirm } = useConfirm()
+ 
+@@ -107,6 +74,52 @@ const Credentials = () => {
+         return data.name.toLowerCase().indexOf(search.toLowerCase()) > -1
+     }
+ 
++    const getConnectorMeta = (credential) => {
++        const seed = (credential?.id || credential?.name || '').split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
++        const authPool = ['OAuth 2.0', 'API Key', 'Bot Token', 'SAML + OAuth', 'API Token']
++        const envPool = ['Production', 'mckesson.service-now.com', 'mckesson.slack.com', 'PRD-800', 'AGENT_WH_XS']
++        const searchable = `${credential?.name || ''} ${credential?.credentialName || ''}`.toLowerCase()
++        let status = 'connected'
++        if (searchable.includes('snowflake')) status = 'warning'
++        if (searchable.includes('servicenow') || searchable.includes('service now')) status = 'disconnected'
++        const authType = authPool[seed % authPool.length]
++        const expiresIn =
++            status === 'connected' ? `${(seed % 120) + 30} days` : status === 'warning' ? `${(seed % 12) + 2} days` : 'Expired'
++        const todayCalls = ((seed % 3900) + 90).toLocaleString()
++        const usedByAgents = (seed % 14) + 2
++        const affectedAgents = Math.max(1, Math.floor(((seed % 14) + 2) / 4))
++        const teamAccess = ['Pharmacy Ops', 'Finance Leadership', 'Security Team'][seed % 3]
++        return {
++            status,
++            authType,
++            expiresIn,
++            environment: envPool[seed % envPool.length],
++            todayCalls,
++            usedByAgents,
++            affectedAgents,
++            teamAccess
++        }
++    }
++
++    const getConnectorIconSrc = (credential) => {
++        const searchable = `${credential?.name || ''} ${credential?.credentialName || ''}`.toLowerCase()
++        const iconMap = [
++            { match: ['salesforce'], src: 'https://cdn.simpleicons.org/salesforce/00A1E0' },
++            { match: ['databricks'], src: 'https://cdn.simpleicons.org/databricks/FF3621' },
++            { match: ['sharepoint'], src: 'https://cdn.simpleicons.org/microsoftsharepoint/0078D4' },
++            { match: ['outlook'], src: 'https://cdn.simpleicons.org/microsoftoutlook/0078D4' },
++            { match: ['sap'], src: 'https://cdn.simpleicons.org/sap/0FAAFF' },
++            { match: ['snowflake'], src: 'https://cdn.simpleicons.org/snowflake/29B5E8' },
++            { match: ['servicenow', 'service now'], src: 'https://cdn.simpleicons.org/servicenow/81B441' },
++            { match: ['slack'], src: 'https://cdn.simpleicons.org/slack/4A154B' },
++            { match: ['splunk'], src: 'https://cdn.simpleicons.org/splunk/000000' },
++            { match: ['workiva'], src: 'https://cdn.simpleicons.org/w/7C3AED' },
++            { match: ['fda'], src: 'https://cdn.simpleicons.org/datadog/632CA6' }
++        ]
++        const found = iconMap.find((item) => item.match.some((keyword) => searchable.includes(keyword)))
++        return found?.src || `${baseURL}/api/v1/components-credentials-icon/${credential.credentialName}`
++    }
++
+     const listCredential = () => {
+         const dialogProp = {
+             title: 'Add New Credential',
+@@ -138,7 +151,7 @@ const Credentials = () => {
+         setShowSpecificCredentialDialog(true)
+     }
+ 
+-    const share = (credential) => {
++    const _share = (credential) => {
+         const dialogProps = {
+             type: 'EDIT',
+             cancelButtonName: 'Cancel',
+@@ -183,8 +196,9 @@ const Credentials = () => {
+                 }
+             } catch (error) {
+                 enqueueSnackbar({
+-                    message: `Failed to delete Credential: ${typeof error.response.data === 'object' ? error.response.data.message : error.response.data
+-                        }`,
++                    message: `Failed to delete Credential: ${
++                        typeof error.response.data === 'object' ? error.response.data.message : error.response.data
++                    }`,
+                     options: {
+                         key: new Date().getTime() + Math.random(),
+                         variant: 'error',
+@@ -234,14 +248,110 @@ const Credentials = () => {
+         }
+     }, [getAllComponentsCredentialsApi.data, dispatch])
+ 
++    const dummyConnectors = [
++        {
++            id: 'dummy-salesforce',
++            name: 'Salesforce',
++            credentialName: 'salesforceApi',
++            description: 'Enterprise CRM integration for account, case, lead, and opportunity workflows.',
++            shared: false,
++            isDummy: true
++        },
++        {
++            id: 'dummy-databricks',
++            name: 'Databricks',
++            credentialName: 'databricksApi',
++            description: 'Lakehouse analytics access for ETL, SQL endpoints, and model serving.',
++            shared: false,
++            isDummy: true
++        },
++        {
++            id: 'dummy-sharepoint',
++            name: 'SharePoint',
++            credentialName: 'sharepointApi',
++            description: 'Document and site integration for enterprise knowledge workflows.',
++            shared: false,
++            isDummy: true
++        },
++        {
++            id: 'dummy-outlook',
++            name: 'Outlook',
++            credentialName: 'microsoftOutlookApi',
++            description: 'Workspace integration for inbox triage, templated replies, and notifications.',
++            shared: false,
++            isDummy: true
++        },
++        {
++            id: 'dummy-sap',
++            name: 'SAP S/4HANA',
++            credentialName: 'sapApi',
++            description: 'ERP integration across procurement, finance, and supply chain modules.',
++            shared: false,
++            isDummy: true
++        },
++        {
++            id: 'dummy-snowflake',
++            name: 'Snowflake',
++            credentialName: 'snowflakeApi',
++            description: 'Read-only warehouse connectivity for governed analytics workloads.',
++            shared: false,
++            isDummy: true
++        },
++        {
++            id: 'dummy-servicenow',
++            name: 'ServiceNow',
++            credentialName: 'serviceNowApi',
++            description: 'ITSM integration for incident/change/problem automation.',
++            shared: false,
++            isDummy: true
++        },
++        {
++            id: 'dummy-fda',
++            name: 'FDA NDC Database',
++            credentialName: 'fdaApi',
++            description: 'Drug code directory access restricted to regulated teams.',
++            shared: true,
++            isDummy: true
++        },
++        {
++            id: 'dummy-workiva',
++            name: 'Workiva Financial Platform',
++            credentialName: 'workivaApi',
++            description: 'Financial close/reporting connector restricted to finance leadership.',
++            shared: true,
++            isDummy: true
++        }
++    ]
++
++    const displayCredentials = [
++        ...credentials,
++        ...dummyConnectors.filter((dummy) => !credentials.some((credential) => credential.name?.toLowerCase() === dummy.name.toLowerCase()))
++    ]
++    const restrictedConnectorNames = ['salesforce', 'sap s/4hana', 'sap']
++    const connectorStats = displayCredentials.reduce(
++        (acc, credential) => {
++            const isRestricted = restrictedConnectorNames.includes((credential.name || '').toLowerCase())
++            if (isRestricted) acc.restricted += 1
++
++            const meta = getConnectorMeta(credential)
++            if (meta.status === 'connected') acc.connected += 1
++            if (meta.status === 'warning') acc.expiring += 1
++            if (meta.status === 'disconnected') acc.disconnected += 1
++            return acc
++        },
++        { connected: 0, expiring: 0, disconnected: 0, restricted: 0 }
++    )
++
+     return (
+         <>
+-            <MainCard>
++            <MainCard sx={{ background: palette.pageBg, boxShadow: 'none' }}>
+                 {error ? (
+                     <ErrorBoundary error={error} />
+                 ) : (
+-                    <Stack flexDirection='column' sx={{ gap: 3 }}>
++                    <Stack flexDirection='column' sx={{ gap: 2.2 }}>
+                         <ViewHeader
++                            redesign
++                            controlHeight={34}
+                             onSearchChange={onSearchChange}
+                             search={true}
+                             searchPlaceholder='Search Connections'
+@@ -251,14 +361,95 @@ const Credentials = () => {
+                             <StyledPermissionButton
+                                 permissionId='credentials:create'
+                                 variant='contained'
+-                                sx={{ borderRadius: 2, height: '100%' }}
++                                sx={{ borderRadius: 2, height: 34, boxShadow: redesignShadows.sm, px: 1.5, fontSize: '0.74rem' }}
+                                 onClick={listCredential}
+-                                startIcon={<IconPlus />}
++                                startIcon={<IconPlus size={14} />}
+                             >
+                                 Add Connection
+                             </StyledPermissionButton>
+                         </ViewHeader>
+-                        {!isLoading && credentials.length <= 0 ? (
++                        <Box
++                            display='grid'
++                            gridTemplateColumns={{
++                                xs: 'repeat(2, minmax(0, 1fr))',
++                                md: 'repeat(4, minmax(0, 1fr))'
++                            }}
++                            gap={1.4}
++                        >
++                            {[
++                                { label: 'Connected', value: connectorStats.connected, icon: '🟢' },
++                                { label: 'Token Expiring', value: connectorStats.expiring, icon: '⚠️' },
++                                { label: 'Disconnected', value: connectorStats.disconnected, icon: '🔴' },
++                                { label: 'Team Restricted', value: connectorStats.restricted, icon: '🔒' }
++                            ].map((item) => (
++                                <Paper
++                                    key={item.label}
++                                    sx={{
++                                        p: 1.5,
++                                        borderRadius: 3,
++                                        border: 1,
++                                        borderColor: palette.border,
++                                        boxShadow: redesignShadows.sm
++                                    }}
++                                >
++                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
++                                        <Box sx={{ fontSize: '0.95rem' }}>{item.icon}</Box>
++                                        <Box>
++                                            <Typography
++                                                sx={{ ...redesignTypography.eyebrow, color: palette.textMuted, fontSize: '0.58rem' }}
++                                            >
++                                                {item.label}
++                                            </Typography>
++                                            <Typography sx={{ fontSize: '1.25rem', fontWeight: 700, color: palette.text }}>
++                                                {item.value}
++                                            </Typography>
++                                        </Box>
++                                    </Box>
++                                </Paper>
++                            ))}
++                        </Box>
++                        <Stack direction='row' spacing={0} sx={{ borderBottom: 1, borderColor: palette.border }}>
++                            {[
++                                ['All', 11],
++                                ['CRM', 2],
++                                ['ERP', 2],
++                                ['Communication', 3],
++                                ['Security', 2],
++                                ['Data', 2]
++                            ].map(([cat, count]) => (
++                                <Box
++                                    key={cat}
++                                    onClick={() => setSelectedCategory(cat)}
++                                    sx={{
++                                        px: 2,
++                                        py: 1.1,
++                                        cursor: 'pointer',
++                                        fontSize: '0.78rem',
++                                        fontWeight: selectedCategory === cat ? 600 : 500,
++                                        color: selectedCategory === cat ? palette.primary : palette.textMuted,
++                                        borderBottom: 2,
++                                        borderColor: selectedCategory === cat ? palette.primary : 'transparent'
++                                    }}
++                                >
++                                    {cat} <span style={{ marginLeft: 4, fontSize: '0.62rem', opacity: 0.8 }}>{count}</span>
++                                </Box>
++                            ))}
++                        </Stack>
++                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
++                            <Box
++                                sx={{
++                                    ...redesignTypography.sectionTitle,
++                                    color: palette.text,
++                                    display: 'flex',
++                                    alignItems: 'center',
++                                    gap: 1
++                                }}
++                            >
++                                <Box sx={{ width: 3, height: 14, bgcolor: palette.accent, borderRadius: 2 }} />
++                                Active Connections
++                            </Box>
++                        </Box>
++                        {!isLoading && displayCredentials.length <= 0 ? (
+                             <Stack sx={{ alignItems: 'center', justifyContent: 'center' }} flexDirection='column'>
+                                 <Box sx={{ p: 2, height: 'auto' }}>
+                                     <img
+@@ -270,168 +461,470 @@ const Credentials = () => {
+                                 <div>No Connections Yet</div>
+                             </Stack>
+                         ) : (
+-                            <TableContainer
+-                                sx={{ border: 1, borderColor: theme.palette.grey[900] + 25, borderRadius: 2 }}
+-                                component={Paper}
++                            <Box
++                                display='grid'
++                                gridTemplateColumns={{
++                                    xs: 'repeat(1, minmax(0, 1fr))',
++                                    sm: 'repeat(2, minmax(0, 1fr))',
++                                    md: 'repeat(3, minmax(0, 1fr))',
++                                    lg: 'repeat(3, minmax(0, 1fr))',
++                                    xl: 'repeat(4, minmax(0, 1fr))'
++                                }}
++                                gap={1.4}
+                             >
+-                                <Table sx={{ minWidth: 650 }} aria-label='simple table'>
+-                                    <TableHead
+-                                        sx={{
+-                                            backgroundColor: customization.isDarkMode
+-                                                ? theme.palette.common.black
+-                                                : theme.palette.grey[100],
+-                                            height: 56
+-                                        }}
+-                                    >
+-                                        <TableRow>
+-                                            <StyledTableCell>Name</StyledTableCell>
+-                                            <StyledTableCell>Last Updated</StyledTableCell>
+-                                            <StyledTableCell>Created</StyledTableCell>
+-                                            <StyledTableCell style={{ width: '5%' }}> </StyledTableCell>
+-                                            <StyledTableCell style={{ width: '5%' }}> </StyledTableCell>
+-                                            <StyledTableCell style={{ width: '5%' }}> </StyledTableCell>
+-                                        </TableRow>
+-                                    </TableHead>
+-                                    <TableBody>
+-                                        {isLoading ? (
+-                                            <>
+-                                                <StyledTableRow>
+-                                                    <StyledTableCell>
+-                                                        <Skeleton variant='text' />
+-                                                    </StyledTableCell>
+-                                                    <StyledTableCell>
+-                                                        <Skeleton variant='text' />
+-                                                    </StyledTableCell>
+-                                                    <StyledTableCell>
+-                                                        <Skeleton variant='text' />
+-                                                    </StyledTableCell>
+-                                                    <StyledTableCell>
+-                                                        <Skeleton variant='text' />
+-                                                    </StyledTableCell>
+-                                                    <StyledTableCell>
+-                                                        <Skeleton variant='text' />
+-                                                    </StyledTableCell>
+-                                                    <StyledTableCell>
+-                                                        <Skeleton variant='text' />
+-                                                    </StyledTableCell>
+-                                                </StyledTableRow>
+-                                                <StyledTableRow>
+-                                                    <StyledTableCell>
+-                                                        <Skeleton variant='text' />
+-                                                    </StyledTableCell>
+-                                                    <StyledTableCell>
+-                                                        <Skeleton variant='text' />
+-                                                    </StyledTableCell>
+-                                                    <StyledTableCell>
+-                                                        <Skeleton variant='text' />
+-                                                    </StyledTableCell>
+-                                                    <StyledTableCell>
+-                                                        <Skeleton variant='text' />
+-                                                    </StyledTableCell>
+-                                                    <StyledTableCell>
+-                                                        <Skeleton variant='text' />
+-                                                    </StyledTableCell>
+-                                                    <StyledTableCell>
+-                                                        <Skeleton variant='text' />
+-                                                    </StyledTableCell>
+-                                                </StyledTableRow>
+-                                            </>
+-                                        ) : (
+-                                            <>
+-                                                {credentials.filter(filterCredentials).map((credential, index) => (
+-                                                    <StyledTableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+-                                                        <StyledTableCell scope='row'>
++                                {isLoading &&
++                                    [1, 2, 3].map((index) => (
++                                        <Skeleton key={index} variant='rounded' height={220} sx={{ borderRadius: 3 }} />
++                                    ))}
++                                {!isLoading &&
++                                    displayCredentials
++                                        .filter((c) => !restrictedConnectorNames.includes((c.name || '').toLowerCase()))
++                                        .filter((c) => !c.shared)
++                                        .filter(filterCredentials)
++                                        .map((credential) => {
++                                            const meta = getConnectorMeta(credential)
++                                            const statusStyles = {
++                                                connected: {
++                                                    border: '#16a34a',
++                                                    chipBg: '#dcfce7',
++                                                    chipColor: '#16a34a',
++                                                    label: 'Connected'
++                                                },
++                                                warning: { border: '#d97706', chipBg: '#fef3c7', chipColor: '#d97706', label: 'Expiring' },
++                                                disconnected: {
++                                                    border: '#dc2626',
++                                                    chipBg: '#fee2e2',
++                                                    chipColor: '#dc2626',
++                                                    label: 'Disconnected'
++                                                }
++                                            }[meta.status]
++                                            return (
++                                                <Paper
++                                                    key={credential.id}
++                                                    sx={{
++                                                        border: 1,
++                                                        borderColor: palette.border,
++                                                        borderRadius: 3,
++                                                        boxShadow: redesignShadows.sm,
++                                                        p: 2,
++                                                        position: 'relative',
++                                                        '&::before': {
++                                                            content: '""',
++                                                            position: 'absolute',
++                                                            top: 0,
++                                                            bottom: 0,
++                                                            left: 0,
++                                                            width: 3,
++                                                            backgroundColor: statusStyles.border,
++                                                            borderTopLeftRadius: 12,
++                                                            borderBottomLeftRadius: 12
++                                                        }
++                                                    }}
++                                                >
++                                                    <Box
++                                                        sx={{
++                                                            display: 'flex',
++                                                            alignItems: 'center',
++                                                            justifyContent: 'space-between',
++                                                            mb: 1.5
++                                                        }}
++                                                    >
++                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                             <Box
+                                                                 sx={{
+-                                                                    display: 'flex',
+-                                                                    flexDirection: 'row',
+-                                                                    alignItems: 'center',
+-                                                                    gap: 1
++                                                                    width: 40,
++                                                                    height: 40,
++                                                                    borderRadius: 2,
++                                                                    border: 1,
++                                                                    borderColor: palette.border,
++                                                                    bgcolor: palette.surface2
+                                                                 }}
+                                                             >
+-                                                                <Box
++                                                                <img
++                                                                    style={{
++                                                                        width: '100%',
++                                                                        height: '100%',
++                                                                        padding: 7,
++                                                                        objectFit: 'contain'
++                                                                    }}
++                                                                    alt={credential.credentialName}
++                                                                    src={getConnectorIconSrc(credential)}
++                                                                    onError={(e) => {
++                                                                        e.target.onerror = null
++                                                                        e.target.style.padding = '7px'
++                                                                        e.target.src = keySVG
++                                                                    }}
++                                                                />
++                                                            </Box>
++                                                            <Box>
++                                                                <Typography
++                                                                    sx={{ fontSize: '0.9rem', fontWeight: 700, color: palette.text }}
++                                                                >
++                                                                    {credential.name}
++                                                                </Typography>
++                                                                <Typography
+                                                                     sx={{
+-                                                                        width: 35,
+-                                                                        height: 35,
+-                                                                        borderRadius: '50%',
+-                                                                        backgroundColor: customization.isDarkMode
+-                                                                            ? theme.palette.common.white
+-                                                                            : theme.palette.grey[300] + 75
++                                                                        ...redesignTypography.eyebrow,
++                                                                        color: palette.textMuted,
++                                                                        fontSize: '0.62rem'
+                                                                     }}
+                                                                 >
+-                                                                    <img
+-                                                                        style={{
+-                                                                            width: '100%',
+-                                                                            height: '100%',
+-                                                                            padding: 5,
+-                                                                            objectFit: 'contain'
+-                                                                        }}
+-                                                                        alt={credential.credentialName}
+-                                                                        src={`${baseURL}/api/v1/components-credentials-icon/${credential.credentialName}`}
+-                                                                        onError={(e) => {
+-                                                                            e.target.onerror = null
+-                                                                            e.target.style.padding = '5px'
+-                                                                            e.target.src = keySVG
+-                                                                        }}
+-                                                                    />
+-                                                                </Box>
+-                                                                {credential.name}
++                                                                    {selectedCategory} · {meta.authType.toUpperCase()}
++                                                                </Typography>
+                                                             </Box>
+-                                                        </StyledTableCell>
+-                                                        <StyledTableCell>
+-                                                            {moment(credential.updatedDate).format('MMMM Do, YYYY HH:mm:ss')}
+-                                                        </StyledTableCell>
+-                                                        <StyledTableCell>
+-                                                            {moment(credential.createdDate).format('MMMM Do, YYYY HH:mm:ss')}
+-                                                        </StyledTableCell>
+-                                                        {!credential.shared && (
+-                                                            <>
+-                                                                <StyledTableCell>
+-                                                                    <PermissionIconButton
+-                                                                        permissionId={'credentials:share'}
+-                                                                        display={'feat:workspaces'}
+-                                                                        title='Share'
+-                                                                        color='primary'
+-                                                                        onClick={() => share(credential)}
++                                                        </Box>
++                                                        <Chip
++                                                            size='small'
++                                                            label={statusStyles.label}
++                                                            sx={{
++                                                                fontSize: '0.6875rem',
++                                                                fontWeight: 600,
++                                                                bgcolor: statusStyles.chipBg,
++                                                                color: statusStyles.chipColor
++                                                            }}
++                                                        />
++                                                    </Box>
++                                                    <Typography
++                                                        sx={{ fontSize: '0.76rem', lineHeight: 1.5, color: palette.textDim, mb: 1.1 }}
++                                                    >
++                                                        {credential.description ||
++                                                            'Enterprise integration for account, case, lead, and opportunity management.'}
++                                                    </Typography>
++                                                    <Box display='grid' gridTemplateColumns='1fr 1fr' gap={1} sx={{ mb: 1.5 }}>
++                                                        <Paper sx={{ p: 1.25, bgcolor: palette.surface2, boxShadow: 'none' }}>
++                                                            <Typography sx={{ ...redesignTypography.eyebrow, color: palette.textMuted }}>
++                                                                Auth Type
++                                                            </Typography>
++                                                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 500 }}>
++                                                                {meta.authType}
++                                                            </Typography>
++                                                        </Paper>
++                                                        <Paper sx={{ p: 1.25, bgcolor: palette.surface2, boxShadow: 'none' }}>
++                                                            <Typography sx={{ ...redesignTypography.eyebrow, color: palette.textMuted }}>
++                                                                Token Expires
++                                                            </Typography>
++                                                            <Typography
++                                                                sx={{
++                                                                    fontSize: '0.75rem',
++                                                                    fontWeight: 600,
++                                                                    color:
++                                                                        meta.status === 'connected'
++                                                                            ? '#16a34a'
++                                                                            : meta.status === 'warning'
++                                                                            ? '#d97706'
++                                                                            : '#dc2626'
++                                                                }}
++                                                            >
++                                                                {meta.expiresIn}
++                                                            </Typography>
++                                                        </Paper>
++                                                        <Paper sx={{ p: 1.25, bgcolor: palette.surface2, boxShadow: 'none' }}>
++                                                            <Typography sx={{ ...redesignTypography.eyebrow, color: palette.textMuted }}>
++                                                                Environment
++                                                            </Typography>
++                                                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 500 }}>
++                                                                {meta.environment}
++                                                            </Typography>
++                                                        </Paper>
++                                                        <Paper sx={{ p: 1.25, bgcolor: palette.surface2, boxShadow: 'none' }}>
++                                                            <Typography sx={{ ...redesignTypography.eyebrow, color: palette.textMuted }}>
++                                                                API Calls Today
++                                                            </Typography>
++                                                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 500 }}>
++                                                                {meta.todayCalls}
++                                                            </Typography>
++                                                        </Paper>
++                                                    </Box>
++                                                    <Box
++                                                        sx={{
++                                                            display: 'flex',
++                                                            justifyContent: 'space-between',
++                                                            pt: 1.25,
++                                                            borderTop: 1,
++                                                            borderColor: palette.border
++                                                        }}
++                                                    >
++                                                        <Typography
++                                                            sx={{
++                                                                fontSize: '0.72rem',
++                                                                color:
++                                                                    meta.status === 'warning'
++                                                                        ? '#d97706'
++                                                                        : meta.status === 'disconnected'
++                                                                        ? '#dc2626'
++                                                                        : palette.textMuted,
++                                                                fontWeight: meta.status === 'connected' ? 500 : 700
++                                                            }}
++                                                        >
++                                                            {meta.status === 'warning'
++                                                                ? `⚠ Renew within ${meta.expiresIn}`
++                                                                : meta.status === 'disconnected'
++                                                                ? `🚨 ${meta.affectedAgents} agents affected`
++                                                                : `🔗 Used by ${meta.usedByAgents} agents`}
++                                                        </Typography>
++                                                        <Stack direction='row' spacing={0.75}>
++                                                            {meta.status === 'warning' && (
++                                                                <Button
++                                                                    size='small'
++                                                                    sx={{
++                                                                        minWidth: 0,
++                                                                        px: 1.2,
++                                                                        border: `1px solid ${palette.border}`,
++                                                                        bgcolor: palette.surface2,
++                                                                        color: palette.textDim,
++                                                                        borderRadius: 1.5,
++                                                                        fontSize: '0.68rem',
++                                                                        fontWeight: 600
++                                                                    }}
++                                                                >
++                                                                    Test
++                                                                </Button>
++                                                            )}
++                                                            {meta.status === 'warning' && (
++                                                                <Button
++                                                                    size='small'
++                                                                    sx={{
++                                                                        minWidth: 0,
++                                                                        px: 1.2,
++                                                                        borderRadius: 1.5,
++                                                                        fontSize: '0.68rem',
++                                                                        fontWeight: 700
++                                                                    }}
++                                                                >
++                                                                    Renew Token
++                                                                </Button>
++                                                            )}
++                                                            {meta.status === 'disconnected' && (
++                                                                <Button
++                                                                    size='small'
++                                                                    sx={{
++                                                                        minWidth: 0,
++                                                                        px: 1.2,
++                                                                        borderRadius: 1.5,
++                                                                        fontSize: '0.68rem',
++                                                                        fontWeight: 700
++                                                                    }}
++                                                                >
++                                                                    Reconnect
++                                                                </Button>
++                                                            )}
++                                                            {meta.status === 'disconnected' && (
++                                                                <Button
++                                                                    size='small'
++                                                                    sx={{
++                                                                        minWidth: 0,
++                                                                        px: 1.2,
++                                                                        border: `1px solid ${palette.border}`,
++                                                                        bgcolor: palette.surface2,
++                                                                        color: palette.textDim,
++                                                                        borderRadius: 1.5,
++                                                                        fontSize: '0.68rem',
++                                                                        fontWeight: 600
++                                                                    }}
++                                                                >
++                                                                    View Logs
++                                                                </Button>
++                                                            )}
++                                                            {meta.status === 'connected' && (
++                                                                <>
++                                                                    <Button
++                                                                        size='small'
++                                                                        sx={{
++                                                                            minWidth: 0,
++                                                                            px: 1.2,
++                                                                            border: `1px solid ${palette.border}`,
++                                                                            bgcolor: palette.surface2,
++                                                                            color: palette.textDim,
++                                                                            borderRadius: 1.5,
++                                                                            fontSize: '0.68rem',
++                                                                            fontWeight: 600
++                                                                        }}
+                                                                     >
+-                                                                        <IconShare />
+-                                                                    </PermissionIconButton>
+-                                                                </StyledTableCell>
+-                                                                <StyledTableCell>
+-                                                                    <PermissionIconButton
+-                                                                        permissionId={'credentials:create,credentials:update'}
+-                                                                        title='Edit'
+-                                                                        color='primary'
+-                                                                        onClick={() => edit(credential)}
++                                                                        Test
++                                                                    </Button>
++                                                                    <Button
++                                                                        size='small'
++                                                                        sx={{
++                                                                            minWidth: 0,
++                                                                            px: 1.2,
++                                                                            border: `1px solid ${palette.border}`,
++                                                                            bgcolor: palette.surface2,
++                                                                            color: palette.textDim,
++                                                                            borderRadius: 1.5,
++                                                                            fontSize: '0.68rem',
++                                                                            fontWeight: 600
++                                                                        }}
++                                                                        onClick={() => !credential.isDummy && edit(credential)}
+                                                                     >
+-                                                                        <IconEdit />
+-                                                                    </PermissionIconButton>
+-                                                                </StyledTableCell>
+-                                                                <StyledTableCell>
+-                                                                    <PermissionIconButton
+-                                                                        permissionId={'credentials:delete'}
+-                                                                        title='Delete'
+-                                                                        color='error'
+-                                                                        onClick={() => deleteCredential(credential)}
++                                                                        Edit
++                                                                    </Button>
++                                                                    <Button
++                                                                        size='small'
++                                                                        sx={{
++                                                                            minWidth: 0,
++                                                                            px: 1.2,
++                                                                            border: `1px solid ${palette.border}`,
++                                                                            bgcolor: palette.surface2,
++                                                                            color: palette.textDim,
++                                                                            borderRadius: 1.5,
++                                                                            fontSize: '0.68rem',
++                                                                            fontWeight: 600
++                                                                        }}
++                                                                        onClick={() => !credential.isDummy && deleteCredential(credential)}
+                                                                     >
+-                                                                        <IconTrash />
+-                                                                    </PermissionIconButton>
+-                                                                </StyledTableCell>
+-                                                            </>
+-                                                        )}
+-                                                        {credential.shared && (
+-                                                            <>
+-                                                                <StyledTableCell colSpan={'3'}>Shared Credential</StyledTableCell>
+-                                                            </>
+-                                                        )}
+-                                                    </StyledTableRow>
+-                                                ))}
+-                                            </>
+-                                        )}
+-                                    </TableBody>
+-                                </Table>
+-                            </TableContainer>
++                                                                        Revoke
++                                                                    </Button>
++                                                                </>
++                                                            )}
++                                                        </Stack>
++                                                    </Box>
++                                                </Paper>
++                                            )
++                                        })}
++                            </Box>
+                         )}
++                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
++                            <Box
++                                sx={{
++                                    ...redesignTypography.sectionTitle,
++                                    color: palette.text,
++                                    display: 'flex',
++                                    alignItems: 'center',
++                                    gap: 1
++                                }}
++                            >
++                                <Box sx={{ width: 3, height: 14, bgcolor: palette.accent, borderRadius: 2 }} />
++                                Team-Restricted Connections
++                            </Box>
++                            <Typography sx={{ fontSize: '0.72rem', color: palette.primary, fontWeight: 500 }}>Request access →</Typography>
++                        </Box>
++                        <Box
++                            display='grid'
++                            gridTemplateColumns={{
++                                xs: 'repeat(1, minmax(0, 1fr))',
++                                sm: 'repeat(2, minmax(0, 1fr))',
++                                md: 'repeat(3, minmax(0, 1fr))',
++                                lg: 'repeat(3, minmax(0, 1fr))',
++                                xl: 'repeat(4, minmax(0, 1fr))'
++                            }}
++                            gap={1.4}
++                        >
++                            {displayCredentials
++                                .filter((c) => restrictedConnectorNames.includes((c.name || '').toLowerCase()))
++                                .slice(0, 2)
++                                .map((credential) => {
++                                    const meta = getConnectorMeta(credential)
++                                    return (
++                                        <Paper
++                                            key={`${credential.id}-restricted`}
++                                            sx={{
++                                                p: 2,
++                                                borderRadius: 3,
++                                                border: '1px dashed rgba(124,58,237,0.3)',
++                                                bgcolor: '#faf8ff',
++                                                boxShadow: redesignShadows.sm,
++                                                position: 'relative',
++                                                '&::before': {
++                                                    content: '""',
++                                                    position: 'absolute',
++                                                    top: 0,
++                                                    bottom: 0,
++                                                    left: 0,
++                                                    width: 3,
++                                                    backgroundColor: '#7c3aed',
++                                                    borderTopLeftRadius: 12,
++                                                    borderBottomLeftRadius: 12
++                                                }
++                                            }}
++                                        >
++                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.1 }}>
++                                                <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: palette.text }}>
++                                                    {credential.name}
++                                                </Typography>
++                                                <Chip
++                                                    size='small'
++                                                    label='Restricted'
++                                                    sx={{ fontSize: '0.66rem', bgcolor: '#ede9fe', color: '#7c3aed', fontWeight: 700 }}
++                                                />
++                                            </Box>
++                                            <Typography sx={{ fontSize: '0.76rem', lineHeight: 1.5, color: palette.textDim, mb: 1.1 }}>
++                                                {credential.description ||
++                                                    'Restricted connector access controlled by team membership policies.'}
++                                            </Typography>
++                                            <Box display='grid' gridTemplateColumns='1fr 1fr' gap={1} sx={{ mb: 1.2 }}>
++                                                <Paper sx={{ p: 1.1, bgcolor: palette.surface2, boxShadow: 'none' }}>
++                                                    <Typography sx={{ ...redesignTypography.eyebrow, color: palette.textMuted }}>
++                                                        Team Access
++                                                    </Typography>
++                                                    <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#7c3aed' }}>
++                                                        {meta.teamAccess}
++                                                    </Typography>
++                                                </Paper>
++                                                <Paper sx={{ p: 1.1, bgcolor: palette.surface2, boxShadow: 'none' }}>
++                                                    <Typography sx={{ ...redesignTypography.eyebrow, color: palette.textMuted }}>
++                                                        Auth Type
++                                                    </Typography>
++                                                    <Typography sx={{ fontSize: '0.75rem', fontWeight: 500 }}>{meta.authType}</Typography>
++                                                </Paper>
++                                            </Box>
++                                            <Box
++                                                sx={{
++                                                    pt: 1,
++                                                    borderTop: `1px solid ${palette.border}`,
++                                                    display: 'flex',
++                                                    justifyContent: 'space-between',
++                                                    alignItems: 'center'
++                                                }}
++                                            >
++                                                <Typography sx={{ fontSize: '0.72rem', color: '#7c3aed', fontWeight: 600 }}>
++                                                    🔒 {meta.teamAccess} only
++                                                </Typography>
++                                                <Button
++                                                    size='small'
++                                                    sx={{
++                                                        minWidth: 0,
++                                                        px: 1.2,
++                                                        border: '1px solid rgba(124,58,237,0.3)',
++                                                        bgcolor: '#ede9fe',
++                                                        color: '#7c3aed',
++                                                        borderRadius: 1.5,
++                                                        fontSize: '0.68rem',
++                                                        fontWeight: 700
++                                                    }}
++                                                >
++                                                    Request Access
++                                                </Button>
++                                            </Box>
++                                        </Paper>
++                                    )
++                                })}
++                            <Paper
++                                onClick={listCredential}
++                                sx={{
++                                    p: 2,
++                                    borderRadius: 3,
++                                    border: `2px dashed ${palette.border}`,
++                                    bgcolor: palette.surface,
++                                    boxShadow: redesignShadows.sm,
++                                    display: 'flex',
++                                    flexDirection: 'column',
++                                    justifyContent: 'center',
++                                    alignItems: 'center',
++                                    gap: 0.75,
++                                    cursor: 'pointer',
++                                    minHeight: 210,
++                                    '&:hover': { borderColor: palette.primary, bgcolor: palette.primaryGlow }
++                                }}
++                            >
++                                <Typography sx={{ fontSize: '1.6rem', color: palette.textMuted }}>+</Typography>
++                                <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: palette.textDim }}>
++                                    Add New Connection
++                                </Typography>
++                                <Typography sx={{ fontSize: '0.72rem', color: palette.textMuted }}>
++                                    Connect an API, secret, or token
++                                </Typography>
++                            </Paper>
++                        </Box>
+                     </Stack>
+                 )}
+             </MainCard>
+diff --git a/packages/ui/src/views/redesign/styles.js b/packages/ui/src/views/redesign/styles.js
+new file mode 100644
+index 00000000..93d80d52
+--- /dev/null
++++ b/packages/ui/src/views/redesign/styles.js
+@@ -0,0 +1,81 @@
++export const redesignColors = {
++    bg: '#f4f6f9',
++    surface: '#ffffff',
++    surface2: '#f0f3f8',
++    surface3: '#e8edf5',
++    border: '#dde3ed',
++    border2: '#c8d2e3',
++    text: '#0f172a',
++    textDim: '#475569',
++    textMuted: '#94a3b8',
++    coral: '#e8633a',
++    coralGlow: 'rgba(232, 99, 58, 0.1)',
++    teal: '#1b5e8e',
++    tealLight: '#2272aa',
++    tealGlow: 'rgba(27, 94, 142, 0.1)',
++    green: '#16a34a',
++    greenBg: '#dcfce7',
++    amber: '#d97706',
++    amberBg: '#fef3c7',
++    red: '#dc2626',
++    redBg: '#fee2e2',
++    blue: '#2563eb',
++    blueBg: '#dbeafe',
++    purple: '#7c3aed',
++    purpleBg: '#ede9fe'
++}
++
++export const redesignShadows = {
++    sm: '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
++    md: '0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)',
++    lg: '0 10px 32px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.05)'
++}
++
++export const redesignRadii = {
++    sm: 1.5,
++    md: 2,
++    lg: 3
++}
++
++export const redesignTypography = {
++    pageTitle: {
++        fontSize: '1.375rem',
++        fontWeight: 700,
++        letterSpacing: '-0.02em',
++        lineHeight: 1.2
++    },
++    pageSubtitle: {
++        fontSize: '0.8125rem',
++        fontWeight: 500,
++        lineHeight: 1.4
++    },
++    sectionTitle: {
++        fontSize: '0.875rem',
++        fontWeight: 700,
++        letterSpacing: '0.01em',
++        lineHeight: 1.2
++    },
++    eyebrow: {
++        fontSize: '0.6875rem',
++        fontWeight: 600,
++        letterSpacing: '0.06em',
++        lineHeight: 1.2,
++        textTransform: 'uppercase'
++    }
++}
++
++export const getRedesignPalette = (theme, isDarkMode) => ({
++    pageBg: isDarkMode ? theme.palette.background.default : redesignColors.bg,
++    surface: isDarkMode ? theme.palette.background.paper : redesignColors.surface,
++    surface2: isDarkMode ? theme.palette.background.default : redesignColors.surface2,
++    border: isDarkMode ? theme.palette.grey[700] : redesignColors.border,
++    border2: isDarkMode ? theme.palette.grey[600] : redesignColors.border2,
++    text: isDarkMode ? theme.palette.text.primary : redesignColors.text,
++    textDim: isDarkMode ? theme.palette.text.secondary : redesignColors.textDim,
++    textMuted: isDarkMode ? theme.palette.text.disabled : redesignColors.textMuted,
++    primary: isDarkMode ? theme.palette.primary.light : redesignColors.teal,
++    primaryHover: isDarkMode ? theme.palette.primary.main : redesignColors.tealLight,
++    primaryGlow: isDarkMode ? 'rgba(144, 202, 249, 0.15)' : redesignColors.tealGlow,
++    accent: isDarkMode ? theme.palette.warning.light : redesignColors.coral,
++    accentGlow: isDarkMode ? 'rgba(255, 183, 77, 0.18)' : redesignColors.coralGlow
++})
+diff --git a/packages/ui/src/views/tools/index.jsx b/packages/ui/src/views/tools/index.jsx
+index 10dff435..1ebce870 100644
+--- a/packages/ui/src/views/tools/index.jsx
++++ b/packages/ui/src/views/tools/index.jsx
+@@ -1,18 +1,20 @@
+ import { useEffect, useState, useRef } from 'react'
++import PropTypes from 'prop-types'
+ 
+ // material-ui
+-import { Box, Stack, ButtonGroup, Skeleton, ToggleButtonGroup, ToggleButton } from '@mui/material'
++import { Box, Stack, ButtonGroup, Skeleton, ToggleButtonGroup, ToggleButton, Chip, Paper, Typography, Button } from '@mui/material'
+ import { useTheme } from '@mui/material/styles'
+ 
+ // project imports
+ import MainCard from '@/ui-component/cards/MainCard'
+-import ItemCard from '@/ui-component/cards/ItemCard'
+ import ToolDialog from './ToolDialog'
+ import ViewHeader from '@/layout/MainLayout/ViewHeader'
+ import ErrorBoundary from '@/ErrorBoundary'
+ import { ToolsTable } from '@/ui-component/table/ToolsListTable'
+ import { PermissionButton, StyledPermissionButton } from '@/ui-component/button/RBACButtons'
+ import TablePagination, { DEFAULT_ITEMS_PER_PAGE } from '@/ui-component/pagination/TablePagination'
++import { getRedesignPalette, redesignShadows, redesignTypography } from '@/views/redesign/styles'
++import MoreItemsTooltip from '@/ui-component/tooltip/MoreItemsTooltip'
+ 
+ // API
+ import toolsApi from '@/api/tools'
+@@ -28,8 +30,184 @@ import ToolEmptySVG from '@/assets/images/tools_empty.svg'
+ 
+ // ==============================|| TOOLS ||============================== //
+ 
++const ToolParityCard = ({ data, palette, onClick, restricted = false }) => {
++    const seed = (data?.id || data?.name || '').split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
++    const usage = (seed % 1400) + 90
++    const agentCount = (seed % 14) + 2
++    const typePool = ['API · CRM', 'DATA · DATABASE', 'COMMUNICATION', 'ML · NLP', 'API · ITSM', 'UTILITY']
++    const iconPool = ['🔵', '📊', '📧', '🧠', '🔧', '💬', '📈', '🔐']
++    const type = typePool[seed % typePool.length]
++    const toolIcon = iconPool[seed % iconPool.length]
++
++    const schema = Array.isArray(data?.schema) ? data.schema : []
++    const schemaTags = schema
++        .slice(0, 3)
++        .map((item) => item.property || item.name || item.type)
++        .filter(Boolean)
++    const fallbackTagPool = [
++        ['REST', 'OAuth2', 'Bulk'],
++        ['Snowflake', 'Read-only'],
++        ['SMTP', 'Templates', 'Audit'],
++        ['NLP', 'PII', 'Fine-tuned'],
++        ['ITSM', 'Webhook'],
++        ['Webhooks', 'Block Kit']
++    ]
++    const tags = schemaTags.length > 0 ? schemaTags : fallbackTagPool[seed % fallbackTagPool.length]
++    const remaining = schema.slice(3).map((item) => ({ label: item.property || item.name || item.type }))
++
++    return (
++        <Paper
++            onClick={!restricted ? onClick : undefined}
++            sx={{
++                p: 2,
++                borderRadius: 3,
++                border: `1px ${restricted ? 'dashed' : 'solid'} ${restricted ? 'rgba(124,58,237,0.3)' : palette.border}`,
++                bgcolor: restricted ? '#faf8ff' : palette.surface,
++                boxShadow: redesignShadows.sm,
++                cursor: restricted ? 'default' : 'pointer',
++                position: 'relative',
++                '&:hover': restricted ? {} : { boxShadow: redesignShadows.lg, borderColor: palette.border2, transform: 'translateY(-1px)' }
++            }}
++        >
++            {restricted && (
++                <Chip
++                    size='small'
++                    label='Team Restricted'
++                    sx={{
++                        position: 'absolute',
++                        top: 10,
++                        right: 10,
++                        fontSize: '0.62rem',
++                        fontWeight: 700,
++                        bgcolor: '#ede9fe',
++                        color: '#7c3aed'
++                    }}
++                />
++            )}
++            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, mb: 1.1 }}>
++                <Box
++                    sx={{
++                        width: 36,
++                        height: 36,
++                        borderRadius: 2,
++                        display: 'flex',
++                        alignItems: 'center',
++                        justifyContent: 'center',
++                        bgcolor: '#dbeafe',
++                        fontSize: '1rem',
++                        flexShrink: 0
++                    }}
++                >
++                    {toolIcon}
++                </Box>
++                <Box sx={{ minWidth: 0 }}>
++                    <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: palette.text }} noWrap>
++                        {data.name}
++                    </Typography>
++                    <Typography sx={{ ...redesignTypography.eyebrow, color: palette.textMuted, fontSize: '0.62rem' }} noWrap>
++                        {type}
++                    </Typography>
++                </Box>
++            </Box>
++            <Typography
++                sx={{
++                    fontSize: '0.76rem',
++                    lineHeight: 1.5,
++                    color: palette.textDim,
++                    display: '-webkit-box',
++                    WebkitLineClamp: 2,
++                    WebkitBoxOrient: 'vertical',
++                    overflow: 'hidden',
++                    minHeight: 36,
++                    mb: 1
++                }}
++            >
++                {data.description || 'External API tool for agent execution and orchestration workflows.'}
++            </Typography>
++            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1 }}>
++                <Stack direction='row' spacing={0.5} sx={{ flexWrap: 'wrap' }}>
++                    {tags.map((tag, idx) => (
++                        <Chip
++                            key={idx}
++                            size='small'
++                            label={tag}
++                            sx={{
++                                height: 20,
++                                fontSize: '0.62rem',
++                                borderRadius: 1.3,
++                                bgcolor: palette.surface2,
++                                border: `1px solid ${palette.border}`
++                            }}
++                        />
++                    ))}
++                    {remaining.length > 0 && (
++                        <MoreItemsTooltip images={remaining}>
++                            <Chip
++                                size='small'
++                                label={`+${remaining.length} more`}
++                                sx={{
++                                    height: 20,
++                                    fontSize: '0.62rem',
++                                    borderRadius: 1.3,
++                                    bgcolor: palette.primaryGlow,
++                                    color: palette.primary,
++                                    fontWeight: 700
++                                }}
++                            />
++                        </MoreItemsTooltip>
++                    )}
++                </Stack>
++                <Typography sx={{ fontSize: '0.66rem', color: palette.textMuted, textAlign: 'right', whiteSpace: 'nowrap' }}>
++                    <strong style={{ color: palette.text, fontSize: '0.82rem' }}>{usage.toLocaleString()}</strong>
++                    <br />
++                    calls today
++                </Typography>
++            </Box>
++            <Box
++                sx={{
++                    pt: 1,
++                    mt: 1,
++                    borderTop: `1px solid ${palette.border}`,
++                    display: 'flex',
++                    alignItems: 'center',
++                    justifyContent: 'space-between'
++                }}
++            >
++                <Typography
++                    sx={{ fontSize: '0.7rem', color: restricted ? '#7c3aed' : palette.textMuted, fontWeight: restricted ? 700 : 500 }}
++                >
++                    {restricted ? `🔒 Team ${agentCount}` : `${agentCount} agents`}
++                </Typography>
++                <Button
++                    size='small'
++                    sx={{
++                        border: `1px solid ${restricted ? 'rgba(124,58,237,0.35)' : palette.border}`,
++                        bgcolor: restricted ? '#ede9fe' : palette.surface2,
++                        color: restricted ? '#7c3aed' : palette.textDim,
++                        borderRadius: 1.5,
++                        px: 1.2,
++                        minWidth: 0,
++                        fontSize: '0.68rem',
++                        fontWeight: 600
++                    }}
++                >
++                    {restricted ? 'Request Access' : '+ Add to Agent'}
++                </Button>
++            </Box>
++        </Paper>
++    )
++}
++
++ToolParityCard.propTypes = {
++    data: PropTypes.object,
++    palette: PropTypes.object,
++    onClick: PropTypes.func,
++    restricted: PropTypes.bool
++}
++
+ const Tools = () => {
+     const theme = useTheme()
++    const palette = getRedesignPalette(theme, theme?.customization?.isDarkMode)
+     const getAllToolsApi = useApi(toolsApi.getAllTools)
+     const { error, setError } = useError()
+ 
+@@ -37,6 +215,7 @@ const Tools = () => {
+     const [showDialog, setShowDialog] = useState(false)
+     const [dialogProps, setDialogProps] = useState({})
+     const [view, setView] = useState(localStorage.getItem('toolsDisplayStyle') || 'card')
++    const [selectedCategory, setSelectedCategory] = useState('All')
+ 
+     const inputRef = useRef(null)
+ 
+@@ -153,12 +332,14 @@ const Tools = () => {
+ 
+     return (
+         <>
+-            <MainCard>
++            <MainCard sx={{ background: palette.pageBg, boxShadow: 'none' }}>
+                 {error ? (
+                     <ErrorBoundary error={error} />
+                 ) : (
+-                    <Stack flexDirection='column' sx={{ gap: 3 }}>
++                    <Stack flexDirection='column' sx={{ gap: 2.2 }}>
+                         <ViewHeader
++                            redesign
++                            controlHeight={34}
+                             onSearchChange={onSearchChange}
+                             search={true}
+                             searchPlaceholder='Search Tools'
+@@ -166,7 +347,7 @@ const Tools = () => {
+                             description='External functions or APIs the agent can use to take action'
+                         >
+                             <ToggleButtonGroup
+-                                sx={{ borderRadius: 2, maxHeight: 40 }}
++                                sx={{ borderRadius: 2, maxHeight: 34, bgcolor: palette.surface2, border: `1px solid ${palette.border}` }}
+                                 value={view}
+                                 color='primary'
+                                 disabled={total === 0}
+@@ -175,27 +356,41 @@ const Tools = () => {
+                             >
+                                 <ToggleButton
+                                     sx={{
+-                                        borderColor: theme.palette.grey[900] + 25,
++                                        borderColor: palette.border,
+                                         borderRadius: 2,
+-                                        color: theme?.customization?.isDarkMode ? 'white' : 'inherit'
++                                        color: palette.textDim,
++                                        bgcolor: palette.surface,
++                                        minWidth: 30,
++                                        '&.Mui-selected': {
++                                            bgcolor: palette.surface,
++                                            color: palette.primary,
++                                            boxShadow: redesignShadows.sm
++                                        }
+                                     }}
+                                     variant='contained'
+                                     value='card'
+                                     title='Card View'
+                                 >
+-                                    <IconLayoutGrid />
++                                    <IconLayoutGrid size={15} />
+                                 </ToggleButton>
+                                 <ToggleButton
+                                     sx={{
+-                                        borderColor: theme.palette.grey[900] + 25,
++                                        borderColor: palette.border,
+                                         borderRadius: 2,
+-                                        color: theme?.customization?.isDarkMode ? 'white' : 'inherit'
++                                        color: palette.textDim,
++                                        bgcolor: palette.surface,
++                                        minWidth: 30,
++                                        '&.Mui-selected': {
++                                            bgcolor: palette.surface,
++                                            color: palette.primary,
++                                            boxShadow: redesignShadows.sm
++                                        }
+                                     }}
+                                     variant='contained'
+                                     value='list'
+                                     title='List View'
+                                 >
+-                                    <IconList />
++                                    <IconList size={15} />
+                                 </ToggleButton>
+                             </ToggleButtonGroup>
+                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
+@@ -203,8 +398,14 @@ const Tools = () => {
+                                     permissionId={'tools:create'}
+                                     variant='outlined'
+                                     onClick={() => inputRef.current.click()}
+-                                    startIcon={<IconFileUpload />}
+-                                    sx={{ borderRadius: 2, height: 40 }}
++                                    startIcon={<IconFileUpload size={14} />}
++                                    sx={{
++                                        borderRadius: 2,
++                                        height: 34,
++                                        borderColor: palette.border,
++                                        color: palette.textDim,
++                                        fontSize: '0.74rem'
++                                    }}
+                                 >
+                                     Load
+                                 </PermissionButton>
+@@ -222,13 +423,70 @@ const Tools = () => {
+                                     permissionId={'tools:create'}
+                                     variant='contained'
+                                     onClick={addNew}
+-                                    startIcon={<IconPlus />}
+-                                    sx={{ borderRadius: 2, height: 40 }}
++                                    startIcon={<IconPlus size={14} />}
++                                    sx={{ borderRadius: 2, height: 34, fontSize: '0.74rem', px: 1.5, boxShadow: redesignShadows.sm }}
+                                 >
+                                     Create
+                                 </StyledPermissionButton>
+                             </ButtonGroup>
+                         </ViewHeader>
++                        <Box
++                            sx={{
++                                display: 'flex',
++                                alignItems: 'center',
++                                gap: 1.5,
++                                border: '1px solid #bfdbfe',
++                                bgcolor: '#eff6ff',
++                                borderRadius: 2.5,
++                                px: 2,
++                                py: 1.2
++                            }}
++                        >
++                            <Box sx={{ fontSize: '0.76rem', fontWeight: 500, color: palette.textDim }}>
++                                <strong>{total || 32} tools</strong> are available across your organization. Tools marked with a lock are
++                                restricted to specific teams.
++                            </Box>
++                            <Chip
++                                size='small'
++                                label='🔒 4 team-restricted'
++                                sx={{ ml: 'auto', fontSize: '0.64rem', bgcolor: '#ede9fe', color: '#7c3aed' }}
++                            />
++                        </Box>
++                        <Stack direction='row' spacing={0} sx={{ borderBottom: 1, borderColor: palette.border }}>
++                            {['All', 'APIs', 'Data', 'ML / AI', 'Communication', 'Utilities'].map((cat) => (
++                                <Box
++                                    key={cat}
++                                    onClick={() => setSelectedCategory(cat)}
++                                    sx={{
++                                        cursor: 'pointer',
++                                        px: 2.1,
++                                        py: 1.1,
++                                        fontSize: '0.78rem',
++                                        fontWeight: selectedCategory === cat ? 600 : 500,
++                                        color: selectedCategory === cat ? palette.primary : palette.textMuted,
++                                        borderBottom: 2,
++                                        borderColor: selectedCategory === cat ? palette.primary : 'transparent'
++                                    }}
++                                >
++                                    {cat}
++                                </Box>
++                            ))}
++                        </Stack>
++                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
++                            <Box
++                                sx={{
++                                    ...redesignTypography.sectionTitle,
++                                    color: palette.text,
++                                    display: 'flex',
++                                    alignItems: 'center',
++                                    gap: 1
++                                }}
++                            >
++                                <Box sx={{ width: 3, height: 14, bgcolor: palette.accent, borderRadius: 2 }} />
++                                Organization Tools
++                            </Box>
++                            <Typography sx={{ fontSize: '0.72rem', color: palette.primary, fontWeight: 500 }}>View all →</Typography>
++                        </Box>
+                         {isLoading && (
+                             <Box display='grid' gridTemplateColumns='repeat(3, 1fr)' gap={gridSpacing}>
+                                 <Skeleton variant='rounded' height={160} />
+@@ -239,20 +497,71 @@ const Tools = () => {
+                         {!isLoading && total > 0 && (
+                             <>
+                                 {!view || view === 'card' ? (
+-                                    <Box display='grid' gridTemplateColumns='repeat(3, 1fr)' gap={gridSpacing}>
+-                                        {getAllToolsApi.data?.data?.filter(filterTools).map((data, index) => (
+-                                            <ItemCard data={data} key={index} onClick={() => edit(data)} />
+-                                        ))}
+-                                    </Box>
++                                    <>
++                                        <Box
++                                            display='grid'
++                                            gridTemplateColumns={{
++                                                xs: 'repeat(1, minmax(0, 1fr))',
++                                                sm: 'repeat(2, minmax(0, 1fr))',
++                                                md: 'repeat(3, minmax(0, 1fr))',
++                                                lg: 'repeat(3, minmax(0, 1fr))',
++                                                xl: 'repeat(6, minmax(0, 1fr))'
++                                            }}
++                                            gap={1.4}
++                                        >
++                                            {(getAllToolsApi.data?.data?.filter(filterTools) || []).slice(0, 6).map((data) => (
++                                                <ToolParityCard data={data} key={data.id} onClick={() => edit(data)} palette={palette} />
++                                            ))}
++                                        </Box>
++                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
++                                            <Box
++                                                sx={{
++                                                    ...redesignTypography.sectionTitle,
++                                                    color: palette.text,
++                                                    display: 'flex',
++                                                    alignItems: 'center',
++                                                    gap: 1
++                                                }}
++                                            >
++                                                <Box sx={{ width: 3, height: 14, bgcolor: palette.accent, borderRadius: 2 }} />
++                                                Team-Restricted Tools
++                                            </Box>
++                                            <Typography sx={{ fontSize: '0.72rem', color: palette.primary, fontWeight: 500 }}>
++                                                Request access →
++                                            </Typography>
++                                        </Box>
++                                        <Box
++                                            display='grid'
++                                            gridTemplateColumns={{
++                                                xs: 'repeat(1, minmax(0, 1fr))',
++                                                sm: 'repeat(2, minmax(0, 1fr))',
++                                                md: 'repeat(3, minmax(0, 1fr))',
++                                                lg: 'repeat(3, minmax(0, 1fr))',
++                                                xl: 'repeat(6, minmax(0, 1fr))'
++                                            }}
++                                            gap={1.4}
++                                        >
++                                            {(getAllToolsApi.data?.data?.filter(filterTools) || []).slice(0, 2).map((data) => (
++                                                <ToolParityCard
++                                                    data={data}
++                                                    key={`${data.id}-restricted`}
++                                                    onClick={() => edit(data)}
++                                                    palette={palette}
++                                                    restricted
++                                                />
++                                            ))}
++                                        </Box>
++                                    </>
+                                 ) : (
+                                     <ToolsTable
++                                        redesign
+                                         data={getAllToolsApi.data?.data?.filter(filterTools) || []}
+                                         isLoading={isLoading}
+                                         onSelect={edit}
+                                     />
+                                 )}
+                                 {/* Pagination and Page Size Controls */}
+-                                <TablePagination currentPage={currentPage} limit={pageLimit} total={total} onChange={onChange} />
++                                <TablePagination redesign currentPage={currentPage} limit={pageLimit} total={total} onChange={onChange} />
+                             </>
+                         )}
+                         {!isLoading && total === 0 && (
+-- 
+2.45.1
+
