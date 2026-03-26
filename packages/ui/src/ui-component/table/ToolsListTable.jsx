@@ -15,6 +15,7 @@ import {
     Typography,
     useTheme
 } from '@mui/material'
+import { getRedesignPalette, redesignShadows } from '@/views/redesign/styles'
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
     borderColor: theme.palette.grey[900] + 25,
@@ -35,17 +36,30 @@ const StyledTableRow = styled(TableRow)(() => ({
     }
 }))
 
-export const ToolsTable = ({ data, isLoading, onSelect }) => {
+export const ToolsTable = ({ data, isLoading, onSelect, redesign = false }) => {
     const theme = useTheme()
     const customization = useSelector((state) => state.customization)
+    const palette = getRedesignPalette(theme, customization.isDarkMode)
 
     return (
         <>
-            <TableContainer sx={{ border: 1, borderColor: theme.palette.grey[900] + 25, borderRadius: 2 }} component={Paper}>
+            <TableContainer
+                sx={{
+                    border: 1,
+                    borderColor: redesign ? palette.border : theme.palette.grey[900] + 25,
+                    borderRadius: redesign ? 3 : 2,
+                    boxShadow: redesign ? redesignShadows.sm : 'none'
+                }}
+                component={Paper}
+            >
                 <Table sx={{ minWidth: 650 }} size='small' aria-label='a dense table'>
                     <TableHead
                         sx={{
-                            backgroundColor: customization.isDarkMode ? theme.palette.common.black : theme.palette.grey[100],
+                            backgroundColor: redesign
+                                ? palette.surface2
+                                : customization.isDarkMode
+                                ? theme.palette.common.black
+                                : theme.palette.grey[100],
                             height: 56
                         }}
                     >
@@ -140,5 +154,6 @@ export const ToolsTable = ({ data, isLoading, onSelect }) => {
 ToolsTable.propTypes = {
     data: PropTypes.array,
     isLoading: PropTypes.bool,
-    onSelect: PropTypes.func
+    onSelect: PropTypes.func,
+    redesign: PropTypes.bool
 }

@@ -15,8 +15,12 @@ import { SET_MENU } from '@/store/actions'
 // styles
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(({ theme, open }) => ({
     ...theme.typography.mainContent,
+    backgroundColor: theme.palette.background.default,
+    borderRadius: 0,
+    padding: 0,
+    paddingTop: '14px',
+    marginRight: 0,
     ...(!open && {
-        backgroundColor: 'transparent',
         borderBottomLeftRadius: 0,
         borderBottomRightRadius: 0,
         transition: theme.transitions.create('all', {
@@ -29,19 +33,18 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(({
             width: `calc(100% - ${drawerWidth}px)`
         },
         [theme.breakpoints.down('md')]: {
-            marginLeft: '20px',
+            marginLeft: 0,
             width: `calc(100% - ${drawerWidth}px)`,
-            padding: '16px'
+            padding: 0
         },
         [theme.breakpoints.down('sm')]: {
-            marginLeft: '10px',
+            marginLeft: 0,
             width: `calc(100% - ${drawerWidth}px)`,
-            padding: '16px',
-            marginRight: '10px'
+            padding: 0,
+            marginRight: 0
         }
     }),
     ...(open && {
-        backgroundColor: 'transparent',
         transition: theme.transitions.create('all', {
             easing: theme.transitions.easing.easeOut,
             duration: theme.transitions.duration.enteringScreen

@@ -5,6 +5,7 @@ import { useRef } from 'react'
 import { IconButton, Box, OutlinedInput, Toolbar, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { StyledFab } from '@/ui-component/button/StyledFab'
+import { getRedesignPalette, redesignShadows, redesignTypography } from '@/views/redesign/styles'
 
 // icons
 import { IconSearch, IconArrowLeft, IconEdit } from '@tabler/icons-react'
@@ -28,11 +29,14 @@ const ViewHeader = ({
     isBackButton,
     onBack,
     isEditButton,
-    onEdit
+    onEdit,
+    redesign = false,
+    controlHeight = 40
 }) => {
     const theme = useTheme()
     const searchInputRef = useRef()
     useSearchShortcut(searchInputRef)
+    const palette = getRedesignPalette(theme, theme?.customization?.isDarkMode)
 
     return (
         <Box sx={{ flexGrow: 1, py: 1.25, width: '100%' }}>
@@ -54,8 +58,9 @@ const ViewHeader = ({
                     <Box sx={{ display: 'flex', alignItems: 'start', flexDirection: 'column' }}>
                         <Typography
                             sx={{
-                                fontSize: '1.8rem',
-                                fontWeight: 600,
+                                ...(redesign ? redesignTypography.pageTitle : {}),
+                                fontSize: redesign ? '1.95rem' : '1.8rem',
+                                fontWeight: redesign ? 700 : 600,
                                 display: '-webkit-box',
                                 WebkitLineClamp: 3,
                                 WebkitBoxOrient: 'vertical',
@@ -71,9 +76,10 @@ const ViewHeader = ({
                         {description && (
                             <Typography
                                 sx={{
-                                    fontSize: '1rem',
-                                    fontWeight: 500,
-                                    mt: 2,
+                                    ...(redesign ? redesignTypography.pageSubtitle : {}),
+                                    fontSize: redesign ? '0.78rem' : '1rem',
+                                    fontWeight: redesign ? redesignTypography.pageSubtitle.fontWeight : 500,
+                                    mt: redesign ? 0.5 : 2,
                                     display: '-webkit-box',
                                     WebkitLineClamp: 5,
                                     WebkitBoxOrient: 'vertical',
@@ -93,20 +99,33 @@ const ViewHeader = ({
                         </IconButton>
                     )}
                 </Box>
-                <Box sx={{ height: 40, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ height: controlHeight, display: 'flex', alignItems: 'center', gap: 1 }}>
                     {search && (
                         <OutlinedInput
                             inputRef={searchInputRef}
                             size='small'
                             sx={{
-                                width: '325px',
+                                width: redesign ? '270px' : '325px',
                                 height: '100%',
                                 display: { xs: 'none', sm: 'flex' },
-                                borderRadius: 2,
+                                borderRadius: redesign ? 2 : 2,
+                                bgcolor: redesign ? palette.surface : 'inherit',
+                                boxShadow: redesign ? redesignShadows.sm : 'none',
 
                                 '& .MuiOutlinedInput-notchedOutline': {
-                                    borderRadius: 2
-                                }
+                                    borderRadius: redesign ? 2 : 2,
+                                    borderColor: redesign ? palette.border : undefined,
+                                    borderWidth: redesign ? '1px' : undefined
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: redesign ? palette.border2 : undefined,
+                                    borderWidth: redesign ? '1px' : undefined
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: redesign ? palette.primary : undefined,
+                                    borderWidth: redesign ? '1px' : undefined
+                                },
+                                '&.Mui-focused': redesign ? { boxShadow: `0 0 0 2px ${palette.primaryGlow}` } : {}
                             }}
                             variant='outlined'
                             placeholder={`${searchPlaceholder} ${isDesktop ? keyboardShortcut : ''}`}
@@ -114,14 +133,14 @@ const ViewHeader = ({
                             startAdornment={
                                 <Box
                                     sx={{
-                                        color: theme.palette.grey[400],
+                                        color: redesign ? palette.textMuted : theme.palette.grey[400],
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         mr: 1
                                     }}
                                 >
-                                    <IconSearch style={{ color: 'inherit', width: 16, height: 16 }} />
+                                    <IconSearch style={{ color: 'inherit', width: redesign ? 14 : 16, height: redesign ? 14 : 16 }} />
                                 </Box>
                             }
                             type='search'
@@ -146,7 +165,9 @@ ViewHeader.propTypes = {
     isBackButton: PropTypes.bool,
     onBack: PropTypes.func,
     isEditButton: PropTypes.bool,
-    onEdit: PropTypes.func
+    onEdit: PropTypes.func,
+    redesign: PropTypes.bool,
+    controlHeight: PropTypes.number
 }
 
 export default ViewHeader

@@ -3,13 +3,15 @@ import { useEffect, useState } from 'react'
 import { useTheme } from '@mui/material/styles'
 import { useSelector } from 'react-redux'
 import PropTypes from 'prop-types'
+import { getRedesignPalette, redesignShadows } from '@/views/redesign/styles'
 
 export const DEFAULT_ITEMS_PER_PAGE = 12
 
-const TablePagination = ({ currentPage, limit, total, onChange }) => {
+const TablePagination = ({ currentPage, limit, total, onChange, redesign = false }) => {
     const theme = useTheme()
     const customization = useSelector((state) => state.customization)
     const borderColor = theme.palette.grey[900] + 25
+    const palette = getRedesignPalette(theme, customization.isDarkMode)
 
     const [itemsPerPage, setItemsPerPage] = useState(DEFAULT_ITEMS_PER_PAGE)
     const [activePage, setActivePage] = useState(1)
@@ -40,16 +42,55 @@ const TablePagination = ({ currentPage, limit, total, onChange }) => {
     }
 
     return (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+        <Box
+            sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mt: 2,
+                ...(redesign
+                    ? {
+                          gap: 2,
+                          '& .MuiPagination-ul': { gap: 0.5 },
+                          '& .MuiPaginationItem-root': {
+                              borderRadius: 2,
+                              border: `1px solid ${palette.border}`,
+                              color: palette.textDim,
+                              minWidth: 30,
+                              height: 30,
+                              fontSize: '0.75rem'
+                          },
+                          '& .MuiPaginationItem-root.Mui-selected': {
+                              backgroundColor: palette.primary,
+                              color: '#fff',
+                              borderColor: palette.primary,
+                              boxShadow: redesignShadows.sm
+                          }
+                      }
+                    : {})
+            }}
+        >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography variant='body2'>Items per page:</Typography>
+                <Typography variant='body2' sx={redesign ? { fontSize: '0.8rem', color: palette.textDim } : {}}>
+                    Items per page:
+                </Typography>
                 <FormControl
                     variant='outlined'
                     size='small'
                     sx={{
                         minWidth: 80,
+                        ...(redesign
+                            ? {
+                                  '& .MuiOutlinedInput-root': {
+                                      borderRadius: 2,
+                                      backgroundColor: palette.surface,
+                                      boxShadow: redesignShadows.sm
+                                  },
+                                  '& .MuiSelect-select': { fontSize: '0.8rem', fontWeight: 600 }
+                              }
+                            : {}),
                         '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: borderColor
+                            borderColor: redesign ? palette.border : borderColor
                         },
                         '& .MuiSvgIcon-root': {
                             color: customization.isDarkMode ? '#fff' : 'inherit'
@@ -65,7 +106,7 @@ const TablePagination = ({ currentPage, limit, total, onChange }) => {
                 </FormControl>
             </Box>
             {totalItems > 0 && (
-                <Typography variant='body2'>
+                <Typography variant='body2' sx={redesign ? { fontSize: '0.8rem', color: palette.textMuted } : {}}>
                     Items {activePage * itemsPerPage - itemsPerPage + 1} to{' '}
                     {activePage * itemsPerPage > totalItems ? totalItems : activePage * itemsPerPage} of {totalItems}
                 </Typography>
@@ -79,7 +120,8 @@ TablePagination.propTypes = {
     onChange: PropTypes.func.isRequired,
     currentPage: PropTypes.number,
     limit: PropTypes.number,
-    total: PropTypes.number
+    total: PropTypes.number,
+    redesign: PropTypes.bool
 }
 
 export default TablePagination

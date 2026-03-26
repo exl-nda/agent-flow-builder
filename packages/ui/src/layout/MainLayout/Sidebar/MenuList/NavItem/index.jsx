@@ -13,6 +13,7 @@ import config from '@/config'
 
 // assets
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord'
+import { getRedesignPalette, redesignShadows } from '@/views/redesign/styles'
 
 // ==============================|| SIDEBAR MENU LIST ITEMS ||============================== //
 
@@ -21,10 +22,11 @@ const NavItem = ({ item, level, navType, onClick, onUploadFile }) => {
     const dispatch = useDispatch()
     const customization = useSelector((state) => state.customization)
     const matchesSM = useMediaQuery(theme.breakpoints.down('lg'))
+    const palette = getRedesignPalette(theme, customization.isDarkMode)
 
     const Icon = item.icon
     const itemIcon = item?.icon ? (
-        <Icon stroke={1.5} size='1.3rem' />
+        <Icon stroke={1.6} size='0.95rem' />
     ) : (
         <FiberManualRecordIcon
             sx={{
@@ -100,23 +102,37 @@ const NavItem = ({ item, level, navType, onClick, onUploadFile }) => {
             {...listItemProps}
             disabled={item.disabled}
             sx={{
-                borderRadius: `${customization.borderRadius}px`,
+                borderRadius: 2,
                 alignItems: 'flex-start',
                 backgroundColor: level > 1 ? 'transparent !important' : 'inherit',
-                py: level > 1 ? 1 : 1.25,
-                pl: `${level * 24}px`
+                py: level > 1 ? 1 : 1.1,
+                px: 1.5,
+                color: palette.textDim,
+                minHeight: 34,
+                '&:hover': {
+                    backgroundColor: palette.surface2,
+                    color: palette.text
+                },
+                '&.Mui-selected': {
+                    backgroundColor: palette.accentGlow,
+                    color: palette.accent,
+                    boxShadow: redesignShadows.sm
+                },
+                '&.Mui-selected:hover': {
+                    backgroundColor: palette.accentGlow
+                }
             }}
             selected={customization.isOpen.findIndex((id) => id === item.id) > -1}
             onClick={() => itemHandler(item.id)}
         >
             {item.id === 'loadChatflow' && <input type='file' hidden accept='.json' onChange={(e) => handleFileUpload(e)} />}
-            <ListItemIcon sx={{ my: 'auto', minWidth: !item?.icon ? 18 : 36 }}>{itemIcon}</ListItemIcon>
+            <ListItemIcon sx={{ my: 'auto', minWidth: !item?.icon ? 16 : 30, color: 'inherit' }}>{itemIcon}</ListItemIcon>
             <ListItemText
                 primary={
                     <Typography
                         variant={customization.isOpen.findIndex((id) => id === item.id) > -1 ? 'h5' : 'body1'}
                         color='inherit'
-                        sx={{ my: 0.5 }}
+                        sx={{ my: 0.25, fontSize: '0.82rem', fontWeight: 500 }}
                     >
                         {item.title}
                     </Typography>
@@ -137,6 +153,24 @@ const NavItem = ({ item, level, navType, onClick, onUploadFile }) => {
                     size={item.chip.size}
                     label={item.chip.label}
                     avatar={item.chip.avatar && <Avatar>{item.chip.avatar}</Avatar>}
+                />
+            )}
+            {item.countBadge && (
+                <Chip
+                    label={item.countBadge}
+                    size='small'
+                    sx={{
+                        my: 'auto',
+                        ml: 0.5,
+                        height: 22,
+                        minWidth: 34,
+                        borderRadius: 5,
+                        fontWeight: 700,
+                        fontSize: '0.75rem',
+                        color: palette.primary,
+                        background: palette.primaryGlow,
+                        border: `1px solid ${palette.border}`
+                    }}
                 />
             )}
             {item.isBeta && (

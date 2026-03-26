@@ -26,6 +26,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 
 import MoreItemsTooltip from '../tooltip/MoreItemsTooltip'
+import { getRedesignPalette, redesignShadows } from '@/views/redesign/styles'
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
     borderColor: theme.palette.grey[900] + 25,
@@ -61,7 +62,8 @@ export const FlowListTable = ({
     isAgentCanvas,
     isAgentflowV2,
     currentPage,
-    pageLimit
+    pageLimit,
+    redesign = false
 }) => {
     const { hasPermission } = useAuth()
     const isActionsAvailable = isAgentCanvas
@@ -69,6 +71,7 @@ export const FlowListTable = ({
         : hasPermission('chatflows:update,chatflows:delete,chatflows:config,chatflows:domains,templates:flowexport,chatflows:export')
     const theme = useTheme()
     const customization = useSelector((state) => state.customization)
+    const palette = getRedesignPalette(theme, customization.isDarkMode)
 
     const localStorageKeyOrder = getLocalStorageKeyName('order', isAgentCanvas)
     const localStorageKeyOrderBy = getLocalStorageKeyName('orderBy', isAgentCanvas)
@@ -108,11 +111,23 @@ export const FlowListTable = ({
 
     return (
         <>
-            <TableContainer sx={{ border: 1, borderColor: theme.palette.grey[900] + 25, borderRadius: 2 }} component={Paper}>
+            <TableContainer
+                sx={{
+                    border: 1,
+                    borderColor: redesign ? palette.border : theme.palette.grey[900] + 25,
+                    borderRadius: redesign ? 3 : 2,
+                    boxShadow: redesign ? redesignShadows.sm : 'none'
+                }}
+                component={Paper}
+            >
                 <Table sx={{ minWidth: 650 }} size='small' aria-label='a dense table'>
                     <TableHead
                         sx={{
-                            backgroundColor: customization.isDarkMode ? theme.palette.common.black : theme.palette.grey[100],
+                            backgroundColor: redesign
+                                ? palette.surface2
+                                : customization.isDarkMode
+                                ? theme.palette.common.black
+                                : theme.palette.grey[100],
                             height: 56
                         }}
                     >
@@ -361,5 +376,6 @@ FlowListTable.propTypes = {
     isAgentCanvas: PropTypes.bool,
     isAgentflowV2: PropTypes.bool,
     currentPage: PropTypes.number,
-    pageLimit: PropTypes.number
+    pageLimit: PropTypes.number,
+    redesign: PropTypes.bool
 }

@@ -16,6 +16,7 @@ import CloudMenuList from '@/layout/MainLayout/Sidebar/CloudMenuList'
 
 // store
 import { drawerWidth, headerHeight } from '@/store/constant'
+import { getRedesignPalette, redesignShadows } from '@/views/redesign/styles'
 
 // ==============================|| SIDEBAR DRAWER ||============================== //
 
@@ -23,6 +24,7 @@ const Sidebar = ({ drawerOpen, drawerToggle, window }) => {
     const theme = useTheme()
     const matchUpMd = useMediaQuery(theme.breakpoints.up('md'))
     const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
+    const palette = getRedesignPalette(theme, theme?.customization?.isDarkMode)
 
     const drawer = (
         <>
@@ -79,13 +81,14 @@ const Sidebar = ({ drawerOpen, drawerToggle, window }) => {
                     sx={{
                         '& .MuiDrawer-paper': {
                             width: drawerWidth,
-                            background: theme.palette.background.default,
-                            color: theme.palette.text.primary,
+                            background: palette.surface,
+                            color: palette.text,
                             [theme.breakpoints.up('md')]: {
                                 top: `${headerHeight}px`
                             },
                             borderRight: drawerOpen ? '1px solid' : 'none',
-                            borderColor: drawerOpen ? theme.palette.grey[900] + 25 : 'transparent'
+                            borderColor: drawerOpen ? palette.border : 'transparent',
+                            boxShadow: drawerOpen ? redesignShadows.sm : 'none'
                         }
                     }}
                     ModalProps={{ keepMounted: true }}

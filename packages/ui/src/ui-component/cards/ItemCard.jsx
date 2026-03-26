@@ -8,6 +8,7 @@ import { Box, Grid, Tooltip, Typography, useTheme } from '@mui/material'
 // project imports
 import MainCard from '@/ui-component/cards/MainCard'
 import MoreItemsTooltip from '../tooltip/MoreItemsTooltip'
+import { getRedesignPalette, redesignShadows } from '@/views/redesign/styles'
 
 const CardWrapper = styled(MainCard)(({ theme }) => ({
     background: theme.palette.card.main,
@@ -30,13 +31,31 @@ const CardWrapper = styled(MainCard)(({ theme }) => ({
 
 // ===========================|| CONTRACT CARD ||=========================== //
 
-const ItemCard = ({ data, images, icons, onClick }) => {
+const ItemCard = ({ data, images, icons, onClick, redesign = false }) => {
     const theme = useTheme()
     const customization = useSelector((state) => state.customization)
+    const palette = getRedesignPalette(theme, customization.isDarkMode)
 
     return (
-        <CardWrapper content={false} onClick={onClick} sx={{ border: 1, borderColor: theme.palette.grey[900] + 25, borderRadius: 2 }}>
-            <Box sx={{ height: '100%', p: 2.25 }}>
+        <CardWrapper
+            content={false}
+            onClick={onClick}
+            sx={{
+                border: 1,
+                borderColor: redesign ? palette.border : theme.palette.grey[900] + 25,
+                borderRadius: redesign ? 3 : 2,
+                background: redesign ? palette.surface : undefined,
+                boxShadow: redesign ? redesignShadows.sm : undefined,
+                '&:hover': redesign
+                    ? {
+                          borderColor: palette.border2,
+                          boxShadow: redesignShadows.lg,
+                          transform: 'translateY(-2px)'
+                      }
+                    : undefined
+            }}
+        >
+            <Box sx={{ height: '100%', p: redesign ? 2.5 : 2.25 }}>
                 <Grid container justifyContent='space-between' direction='column' sx={{ height: '100%', gap: 3 }}>
                     <Box display='flex' flexDirection='column' sx={{ width: '100%' }}>
                         <div
@@ -80,8 +99,8 @@ const ItemCard = ({ data, images, icons, onClick }) => {
                             <Typography
                                 sx={{
                                     display: '-webkit-box',
-                                    fontSize: '1.25rem',
-                                    fontWeight: 500,
+                                    fontSize: redesign ? '0.95rem' : '1.25rem',
+                                    fontWeight: redesign ? 700 : 500,
                                     WebkitLineClamp: 2,
                                     WebkitBoxOrient: 'vertical',
                                     textOverflow: 'ellipsis',
@@ -100,7 +119,10 @@ const ItemCard = ({ data, images, icons, onClick }) => {
                                     WebkitLineClamp: 3,
                                     WebkitBoxOrient: 'vertical',
                                     textOverflow: 'ellipsis',
-                                    overflow: 'hidden'
+                                    overflow: 'hidden',
+                                    fontSize: redesign ? '0.78rem' : undefined,
+                                    lineHeight: redesign ? 1.55 : undefined,
+                                    color: redesign ? palette.textDim : undefined
                                 }}
                             >
                                 {data.description}
@@ -187,7 +209,8 @@ ItemCard.propTypes = {
     data: PropTypes.object,
     images: PropTypes.array,
     icons: PropTypes.array,
-    onClick: PropTypes.func
+    onClick: PropTypes.func,
+    redesign: PropTypes.bool
 }
 
 export default ItemCard

@@ -9,12 +9,14 @@ import NavItem from '../NavItem'
 import NavCollapse from '../NavCollapse'
 import { useAuth } from '@/hooks/useAuth'
 import { Available } from '@/ui-component/rbac/available'
+import { getRedesignPalette, redesignTypography } from '@/views/redesign/styles'
 
 // ==============================|| SIDEBAR MENU LIST GROUP ||============================== //
 
 const NavGroup = ({ item }) => {
     const theme = useTheme()
     const { hasPermission, hasDisplay } = useAuth()
+    const palette = getRedesignPalette(theme, theme?.customization?.isDarkMode)
 
     const listItems = (menu, level = 1) => {
         // Filter based on display and permission
@@ -53,7 +55,7 @@ const NavGroup = ({ item }) => {
 
     const renderPrimaryItems = () => {
         const primaryGroup = item.children.find((child) => child.id === 'primary')
-        return primaryGroup.children
+        return primaryGroup || { title: '', children: [] }
     }
 
     const renderNonPrimaryGroups = () => {
@@ -72,20 +74,15 @@ const NavGroup = ({ item }) => {
         <>
             <List
                 subheader={
-                    item.title && (
+                    renderPrimaryItems().title && (
                         <Typography variant='caption' sx={{ ...theme.typography.menuCaption }} display='block' gutterBottom>
-                            {item.title}
-                            {item.caption && (
-                                <Typography variant='caption' sx={{ ...theme.typography.subMenuCaption }} display='block' gutterBottom>
-                                    {item.caption}
-                                </Typography>
-                            )}
+                            <span style={redesignTypography.eyebrow}>{renderPrimaryItems().title}</span>
                         </Typography>
                     )
                 }
-                sx={{ p: '16px', py: 2, display: 'flex', flexDirection: 'column', gap: 1 }}
+                sx={{ p: '10px', py: 1.25, display: 'flex', flexDirection: 'column', gap: 0.35 }}
             >
-                {renderPrimaryItems().map((menu) => listItems(menu))}
+                {renderPrimaryItems().children.map((menu) => listItems(menu))}
             </List>
 
             {renderNonPrimaryGroups().map((group) => {
@@ -93,14 +90,19 @@ const NavGroup = ({ item }) => {
                 return (
                     <Available key={group.id} permission={groupPermissions}>
                         <>
-                            <Divider sx={{ height: '1px', borderColor: theme.palette.grey[900] + 25, my: 0 }} />
+                            <Divider sx={{ height: '1px', borderColor: palette.border, my: 0.35 }} />
                             <List
                                 subheader={
-                                    <Typography variant='caption' sx={{ ...theme.typography.subMenuCaption }} display='block' gutterBottom>
+                                    <Typography
+                                        variant='caption'
+                                        sx={{ ...theme.typography.subMenuCaption, color: palette.textMuted }}
+                                        display='block'
+                                        gutterBottom
+                                    >
                                         {group.title}
                                     </Typography>
                                 }
-                                sx={{ p: '16px', py: 2, display: 'flex', flexDirection: 'column', gap: 1 }}
+                                sx={{ p: '10px', py: 1.25, display: 'flex', flexDirection: 'column', gap: 0.35 }}
                             >
                                 {group.children.map((menu) => listItems(menu))}
                             </List>

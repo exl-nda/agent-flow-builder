@@ -23,7 +23,9 @@ import {
     IconLockCheck,
     IconFileDatabase,
     IconShieldLock,
-    IconListCheck
+    IconListCheck,
+    IconBriefcase,
+    IconHome
 } from '@tabler/icons-react'
 
 // constant
@@ -51,7 +53,9 @@ const icons = {
     IconLockCheck,
     IconFileDatabase,
     IconShieldLock,
-    IconListCheck
+    IconListCheck,
+    IconBriefcase,
+    IconHome
 }
 
 // ==============================|| DASHBOARD MENU ITEMS ||============================== //
@@ -63,7 +67,7 @@ const dashboard = {
     children: [
         {
             id: 'primary',
-            title: '',
+            title: 'BUILDER',
             type: 'group',
             children: [
                 // {
@@ -82,7 +86,8 @@ const dashboard = {
                     url: '/agentflows',
                     icon: icons.IconUsersGroup,
                     breadcrumbs: true,
-                    permission: 'agentflows:view'
+                    permission: 'agentflows:view',
+                    countBadge: '24'
                 },
                 // {
                 //     id: 'executions',
@@ -118,17 +123,19 @@ const dashboard = {
                     url: '/tools',
                     icon: icons.IconTool,
                     breadcrumbs: true,
-                    permission: 'tools:view'
+                    permission: 'tools:view',
+                    countBadge: '32'
                 },
                 {
                     id: 'credentials',
                     title: 'Connectors',
                     type: 'item',
                     url: '/credentials',
-                    icon: icons.IconLock,
+                    icon: icons.IconBriefcase,
                     breadcrumbs: true,
-                    permission: 'credentials:view'
-                },
+                    permission: 'credentials:view',
+                    countBadge: '8'
+                }
                 // {
                 //     id: 'variables',
                 //     title: 'Variables',
@@ -159,131 +166,27 @@ const dashboard = {
             ]
         },
         {
-            id: 'evaluations',
-            title: 'Evaluations',
+            id: 'organization',
+            title: 'ORGANIZATION',
             type: 'group',
             children: [
                 {
-                    id: 'datasets',
-                    title: 'Datasets',
+                    id: 'shared-library',
+                    title: 'Shared Library',
                     type: 'item',
-                    url: '/datasets',
-                    icon: icons.IconDatabase,
+                    url: '/agentflows',
+                    icon: icons.IconHome,
                     breadcrumbs: true,
-                    display: 'feat:datasets',
-                    permission: 'datasets:view'
+                    disabled: true
                 },
                 {
-                    id: 'evaluators',
-                    title: 'Evaluators',
+                    id: 'team-access',
+                    title: 'Team Access',
                     type: 'item',
-                    url: '/evaluators',
-                    icon: icons.IconTestPipe,
+                    url: '/agentflows',
+                    icon: icons.IconUsersGroup,
                     breadcrumbs: true,
-                    display: 'feat:evaluators',
-                    permission: 'evaluators:view'
-                },
-                {
-                    id: 'evaluations',
-                    title: 'Evaluations',
-                    type: 'item',
-                    url: '/evaluations',
-                    icon: icons.IconChartHistogram,
-                    breadcrumbs: true,
-                    display: 'feat:evaluations',
-                    permission: 'evaluations:view'
-                }
-            ]
-        },
-        {
-            id: 'management',
-            title: 'User & Workspace Management',
-            type: 'group',
-            children: [
-                {
-                    id: 'sso',
-                    title: 'SSO Config',
-                    type: 'item',
-                    url: '/sso-config',
-                    icon: icons.IconShieldLock,
-                    breadcrumbs: true,
-                    display: 'feat:sso-config',
-                    permission: 'sso:manage'
-                },
-                {
-                    id: 'roles',
-                    title: 'Roles',
-                    type: 'item',
-                    url: '/roles',
-                    icon: icons.IconLockCheck,
-                    breadcrumbs: true,
-                    display: 'feat:roles',
-                    permission: 'roles:manage'
-                },
-                {
-                    id: 'users',
-                    title: 'Users',
-                    type: 'item',
-                    url: '/users',
-                    icon: icons.IconUsers,
-                    breadcrumbs: true,
-                    display: 'feat:users',
-                    permission: 'users:manage'
-                },
-                {
-                    id: 'workspaces',
-                    title: 'Workspaces',
-                    type: 'item',
-                    url: '/workspaces',
-                    icon: icons.IconStack2,
-                    breadcrumbs: true,
-                    display: 'feat:workspaces',
-                    permission: 'workspace:view'
-                },
-                {
-                    id: 'login-activity',
-                    title: 'Login Activity',
-                    type: 'item',
-                    url: '/login-activity',
-                    icon: icons.IconClipboardList,
-                    breadcrumbs: true,
-                    display: 'feat:login-activity',
-                    permission: 'loginActivity:view'
-                }
-            ]
-        },
-        {
-            id: 'others',
-            title: 'Others',
-            type: 'group',
-            children: [
-                {
-                    id: 'logs',
-                    title: 'Logs',
-                    type: 'item',
-                    url: '/logs',
-                    icon: icons.IconList,
-                    breadcrumbs: true,
-                    display: 'feat:logs',
-                    permission: 'logs:view'
-                },
-                // {
-                //     id: 'files',
-                //     title: 'Files',
-                //     type: 'item',
-                //     url: '/files',
-                //     icon: icons.IconFileDatabase,
-                //     breadcrumbs: true,
-                //     display: 'feat:files',
-                // },
-                {
-                    id: 'account',
-                    title: 'Account Settings',
-                    type: 'item',
-                    url: '/account',
-                    icon: icons.IconSettings,
-                    breadcrumbs: true,
-                    display: 'feat:account'
+                    disabled: true
                 }
             ]
         }
