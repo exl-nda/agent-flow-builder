@@ -13,7 +13,7 @@ import { IconSettings, IconChevronLeft, IconDeviceFloppy, IconPencil, IconCheck,
 // project imports
 import Settings from '@/views/settings'
 import SaveChatflowDialog from '@/ui-component/dialog/SaveChatflowDialog'
-import APICodeDialog from '@/views/chatflows/APICodeDialog'
+import LangGraphWorkbenchDialog from '@/views/chatflows/LangGraphWorkbenchDialog'
 import ViewMessagesDialog from '@/ui-component/dialog/ViewMessagesDialog'
 import ChatflowConfigurationDialog from '@/ui-component/dialog/ChatflowConfigurationDialog'
 import UpsertHistoryDialog from '@/views/vectorstore/UpsertHistoryDialog'
@@ -45,8 +45,7 @@ const CanvasHeader = ({ chatflow, isAgentCanvas, isAgentflowV2, handleSaveFlow, 
     const [flowName, setFlowName] = useState('')
     const [isSettingsOpen, setSettingsOpen] = useState(false)
     const [flowDialogOpen, setFlowDialogOpen] = useState(false)
-    const [apiDialogOpen, setAPIDialogOpen] = useState(false)
-    const [apiDialogProps, setAPIDialogProps] = useState({})
+    const [langGraphWorkbenchOpen, setLangGraphWorkbenchOpen] = useState(false)
     const [viewMessagesDialogOpen, setViewMessagesDialogOpen] = useState(false)
     const [viewMessagesDialogProps, setViewMessagesDialogProps] = useState({})
     const [viewLeadsDialogOpen, setViewLeadsDialogOpen] = useState(false)
@@ -171,46 +170,7 @@ const CanvasHeader = ({ chatflow, isAgentCanvas, isAgentflowV2, handleSaveFlow, 
     }
 
     const onAPIDialogClick = () => {
-        // If file type is file, isFormDataRequired = true
-        let isFormDataRequired = false
-        try {
-            const flowData = JSON.parse(chatflow.flowData)
-            const nodes = flowData.nodes
-            for (const node of nodes) {
-                if (node.data.inputParams.find((param) => param.type === 'file')) {
-                    isFormDataRequired = true
-                    break
-                }
-            }
-        } catch (e) {
-            console.error(e)
-        }
-
-        // If sessionId memory, isSessionMemory = true
-        let isSessionMemory = false
-        try {
-            const flowData = JSON.parse(chatflow.flowData)
-            const nodes = flowData.nodes
-            for (const node of nodes) {
-                if (node.data.inputParams.find((param) => param.name === 'sessionId')) {
-                    isSessionMemory = true
-                    break
-                }
-            }
-        } catch (e) {
-            console.error(e)
-        }
-
-        setAPIDialogProps({
-            title: 'Generated Code', //'Embed in website or use as API',
-            chatflowid: chatflow.id,
-            chatflowApiKeyId: chatflow.apikeyid,
-            isFormDataRequired,
-            isSessionMemory,
-            isAgentCanvas,
-            isAgentflowV2
-        })
-        setAPIDialogOpen(true)
+        setLangGraphWorkbenchOpen(true)
     }
 
     const onSaveChatflowClick = () => {
@@ -472,7 +432,7 @@ const CanvasHeader = ({ chatflow, isAgentCanvas, isAgentflowV2, handleSaveFlow, 
                 onCancel={() => setFlowDialogOpen(false)}
                 onConfirm={onConfirmSaveName}
             />
-            {apiDialogOpen && <APICodeDialog show={apiDialogOpen} dialogProps={apiDialogProps} onCancel={() => setAPIDialogOpen(false)} />}
+            <LangGraphWorkbenchDialog open={langGraphWorkbenchOpen} chatflow={chatflow} onClose={() => setLangGraphWorkbenchOpen(false)} />
             <ViewMessagesDialog
                 show={viewMessagesDialogOpen}
                 dialogProps={viewMessagesDialogProps}

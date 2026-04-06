@@ -1060,6 +1060,7 @@ const ChatMessage = ({ open, chatflowid, isAgentCanvas, isDialog, previews, setP
         await fetchEventSource(`${baseURL}/api/v1/internal-prediction/${chatflowid}`, {
             openWhenHidden: true,
             method: 'POST',
+            credentials: 'include',
             body: JSON.stringify(params),
             headers: {
                 'Content-Type': 'application/json',

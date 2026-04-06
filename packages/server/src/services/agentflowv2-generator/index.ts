@@ -6,10 +6,27 @@ import path from 'path'
 import * as fs from 'fs'
 import { generateAgentflowv2 as generateAgentflowv2_json } from 'flowise-components'
 import { z } from 'zod'
-import { sysPrompt } from './prompt'
+import { sysPrompt, langGraphSystemPrompt } from './prompt'
 import { databaseEntities } from '../../utils'
 import logger from '../../utils/logger'
 import { MODE } from '../../Interface'
+import OpenAI from 'openai'
+
+/** OpenAI chat model ids from flowise-components `models.json` (ChatOpenAI node list). */
+export const getOpenAIChatModelsForLangGraph = (): { label: string; name: string }[] => {
+    try {
+        const pkgJson = require.resolve('flowise-components/package.json')
+        const dir = path.dirname(pkgJson)
+        const modelsPath = path.join(dir, 'models.json')
+        const raw = fs.readFileSync(modelsPath, 'utf8')
+        const parsed = JSON.parse(raw) as { chat?: Array<{ name: string; models: { label: string; name: string }[] }> }
+        const openai = parsed.chat?.find((p) => p.name === 'chatOpenAI')
+        const models = openai?.models?.map((m) => ({ label: m.label, name: m.name })) ?? []
+        return models.length ? models : [{ label: 'gpt-4o-mini', name: 'gpt-4o-mini' }]
+    } catch {
+        return [{ label: 'gpt-4o-mini', name: 'gpt-4o-mini' }]
+    }
+}
 
 // Define the Zod schema for Agentflowv2 data structure
 const NodeType = z.object({
@@ -248,6 +265,166 @@ const generateAgentflowv2 = async (question: string, selectedChatModel: Record<s
     }
 }
 
+const getLangGraphUserPrompt = (flowData: Record<string, any>, instruction?: string) => {
+    const serializedFlow = JSON.stringify(flowData, null, 2)
+    const additionalInstruction = instruction?.trim()
+        ? `\n\n### ADDITIONAL INSTRUCTION\n${instruction.trim()}\n`
+        : ''
+    return `${serializedFlow}${additionalInstruction}`
+}
+
+type LangGraphValidationResult = {
+    passed: boolean
+    issues: string[]
+}
+
+type LangGraphLogEvent = {
+    phase: string
+    type: 'request' | 'response' | 'validation'
+    payload: any
+}
+
+/* Disabled: local heuristic validation (use with LLM repair when re-enabled)
+const validateLangGraphCode = (code: string): LangGraphValidationResult => {
+    const issues: string[] = []
+    const normalized = code || ''
+
+    if (!/TypedDict/.test(normalized)) {
+        issues.push('Missing TypedDict state schema.')
+    }
+    if (!/StateGraph\s*\(/.test(normalized)) {
+        issues.push('Missing StateGraph construction.')
+    }
+    if (!/(set_entry_point\s*\()|(START)/.test(normalized)) {
+        issues.push('Missing graph entry point (set_entry_point or START).')
+    }
+    if (!/END/.test(normalized)) {
+        issues.push('Missing END node usage.')
+    }
+    if (!/compile\s*\(/.test(normalized)) {
+        issues.push('Missing compile() call.')
+    }
+    if (!/invoke\s*\(/.test(normalized)) {
+        issues.push('Missing invoke() example.')
+    }
+    if (/add_edge\s*\([^)]*condition\s*=/.test(normalized)) {
+        issues.push('Invalid API usage: add_edge(..., condition=...) is not supported.')
+    }
+    if (!/add_conditional_edges\s*\(/.test(normalized)) {
+        issues.push('Missing add_conditional_edges() for routing.')
+    }
+    if (!/def\s+\w+\s*\(\s*state/.test(normalized)) {
+        issues.push('Missing node function signatures that accept state.')
+    }
+
+    return {
+        passed: issues.length === 0,
+        issues
+    }
+}
+*/
+
+const sanitizePythonCode = (code: string) => {
+    if (!code) return ''
+    let cleaned = code.trim()
+    // Remove markdown code fences if present
+    cleaned = cleaned.replace(/^```(?:python|py)?\s*/i, '')
+    cleaned = cleaned.replace(/```$/i, '')
+    return cleaned.trim()
+}
+
+const generateCompletionFromMessages = async (
+    client: OpenAI,
+    model: string,
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    phase: string,
+    onLog?: (log: LangGraphLogEvent) => void,
+    onToken?: (phase: string, token: string) => void
+) => {
+    onLog?.({
+        phase,
+        type: 'request',
+        payload: {
+            model,
+            temperature: 0.2,
+            messages
+        }
+    })
+
+    const completion = await client.chat.completions.create({
+        model,
+        temperature: 0.2,
+        messages,
+        stream: true
+    })
+    let content = ''
+    for await (const chunk of completion) {
+        const token = chunk.choices?.[0]?.delta?.content || ''
+        if (!token) continue
+        content += token
+        onToken?.(phase, token)
+    }
+    onLog?.({
+        phase,
+        type: 'response',
+        payload: {
+            content
+        }
+    })
+
+    return sanitizePythonCode(content)
+}
+
+const generateLangGraphCodeStream = async (
+    flowData: Record<string, any>,
+    instruction?: string,
+    onLog?: (log: LangGraphLogEvent) => void,
+    onToken?: (phase: string, token: string) => void,
+    modelOverride?: string
+) => {
+    try {
+        const apiKey = process.env.OPENAI_API_KEY
+        if (!apiKey) {
+            throw new InternalFlowiseError(StatusCodes.BAD_REQUEST, 'OPENAI_API_KEY is not configured.')
+        }
+
+        const model =
+            typeof modelOverride === 'string' && modelOverride.trim().length > 0
+                ? modelOverride.trim()
+                : process.env.OPENAI_LANGGRAPH_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini'
+        const userPrompt = getLangGraphUserPrompt(flowData, instruction)
+        const client = new OpenAI({ apiKey })
+
+        const candidateCode = await generateCompletionFromMessages(
+            client,
+            model,
+            [
+                { role: 'system', content: langGraphSystemPrompt },
+                { role: 'user', content: userPrompt }
+            ],
+            'generation',
+            onLog,
+            onToken
+        )
+
+        const validationResult: LangGraphValidationResult = { passed: true, issues: [] }
+
+        return {
+            code: candidateCode,
+            model,
+            artifact: {
+                instruction: instruction || 'Auto-generate LangGraph code from current flow JSON',
+                flowData
+            },
+            phases: ['generation'],
+            validation: validationResult
+        }
+    } catch (error) {
+        throw new InternalFlowiseError(StatusCodes.INTERNAL_SERVER_ERROR, `Error: generateLangGraphCodeStream - ${getErrorMessage(error)}`)
+    }
+}
+
 export default {
-    generateAgentflowv2
+    generateAgentflowv2,
+    generateLangGraphCodeStream
 }

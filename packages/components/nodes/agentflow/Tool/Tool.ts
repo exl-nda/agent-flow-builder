@@ -192,7 +192,7 @@ class Tool_Agentflow implements INode {
             (nodeData?.inputs?.toolAgentflowSelectedToolConfig as ICommonObject) ||
             {}
 
-        const toolInputArgs = nodeData.inputs?.toolInputArgs as IToolInputArgs[]
+        const toolInputArgs = Array.isArray(nodeData.inputs?.toolInputArgs) ? (nodeData.inputs?.toolInputArgs as IToolInputArgs[]) : []
         const _toolUpdateState = nodeData.inputs?.toolUpdateState
 
         const state = options.agentflowRuntime?.state as ICommonObject
@@ -268,9 +268,20 @@ class Tool_Agentflow implements INode {
         }
 
         for (const item of toolInputArgs) {
-            const variableName = item.inputArgName
+            const variableName = item?.inputArgName
+            if (!variableName || typeof variableName !== 'string') continue
             const variableValue = item.inputArgValue
             toolCallArgs[variableName] = parseInputValue(variableValue)
+        }
+
+        const chatInput = typeof input === 'string' ? input : ''
+        if (chatInput) {
+            if (toolCallArgs.userMessage === undefined || toolCallArgs.userMessage === '') {
+                toolCallArgs.userMessage = chatInput
+            }
+            if (toolCallArgs.query === undefined || toolCallArgs.query === '') {
+                toolCallArgs.query = chatInput
+            }
         }
 
         const flowConfig = {
@@ -321,6 +332,31 @@ class Tool_Agentflow implements INode {
                 }
             }
 
+            /** Document digitization check tools return JSON with isDigitized + text for Condition / LLM wiring */
+            let digitizationMeta: { isDigitized: string; text: string } | undefined
+            if (typeof toolOutput === 'string') {
+                try {
+                    const parsed = JSON.parse(toolOutput) as Record<string, unknown>
+                    if (parsed && typeof parsed === 'object') {
+                        let isDigStr: string | undefined
+                        if (typeof parsed.isDigitized === 'boolean') {
+                            isDigStr = parsed.isDigitized ? 'true' : 'false'
+                        } else if (parsed.isDigitized === 'true' || parsed.isDigitized === 'false') {
+                            isDigStr = parsed.isDigitized
+                        }
+                        if (isDigStr !== undefined) {
+                            digitizationMeta = {
+                                isDigitized: isDigStr,
+                                text: typeof parsed.text === 'string' ? parsed.text : ''
+                            }
+                            toolOutput = digitizationMeta.text
+                        }
+                    }
+                } catch {
+                    // not JSON — keep string tool output
+                }
+            }
+
             if (typeof toolOutput === 'object') {
                 toolOutput = JSON.stringify(toolOutput, null, 2)
             }
@@ -341,6 +377,9 @@ class Tool_Agentflow implements INode {
                 },
                 output: {
                     content: toolOutput,
+                    ...(digitizationMeta
+                        ? { isDigitized: digitizationMeta.isDigitized, text: digitizationMeta.text }
+                        : {}),
                     artifacts: parsedArtifacts
                 },
                 state: newState

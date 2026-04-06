@@ -28,6 +28,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { Dropdown } from '@/ui-component/dropdown/Dropdown'
 import ShareChatbot from './ShareChatbot'
 import EmbedChat from './EmbedChat'
+import LangGraphWorkbenchDialog from './LangGraphWorkbenchDialog'
 import { Available } from '@/ui-component/rbac/available'
 
 // Const
@@ -101,6 +102,7 @@ const APICodeDialog = ({ show, dialogProps, onCancel }) => {
     const [selectedApiKey, setSelectedApiKey] = useState({})
     const [selectedEnvironment, setSelectedEnvironment] = useState('dev')
     const [checkboxVal, setCheckbox] = useState(false)
+    const [langGraphWorkbenchOpen, setLangGraphWorkbenchOpen] = useState(false)
     const [nodeConfig, setNodeConfig] = useState({})
     const [nodeConfigExpanded, setNodeConfigExpanded] = useState({})
     const [nodeOverrides, setNodeOverrides] = useState(apiConfig?.overrideConfig?.nodes ?? null)
@@ -1184,9 +1186,21 @@ if __name__ == "__main__":
                             <ShareChatbot isSessionMemory={dialogProps.isSessionMemory} isAgentCanvas={dialogProps.isAgentCanvas} />
                         )} */}
                         {codeLang === 'LangGraph' && !chatflowApiKeyId && (
-                            <Box sx={{ maxHeight: '55vh', overflow: 'auto', border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
-                                <CopyBlock theme={atomOneDark} text={getLanggraphCode()} language='javascript' showLineNumbers={false} wrapLines />
-                            </Box>
+                            <>
+                                <Stack direction='row' spacing={1} sx={{ mb: 1 }}>
+                                    <Button variant='contained' color='secondary' onClick={() => setLangGraphWorkbenchOpen(true)}>
+                                        Generate LangGraph Code
+                                    </Button>
+                                </Stack>
+                                <Box sx={{ maxHeight: '55vh', overflow: 'auto', border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
+                                    <CopyBlock theme={atomOneDark} text={getLanggraphCode()} language='javascript' showLineNumbers={false} wrapLines />
+                                </Box>
+                                <LangGraphWorkbenchDialog
+                                    open={langGraphWorkbenchOpen}
+                                    initialCode={getLanggraphCode()}
+                                    onClose={() => setLangGraphWorkbenchOpen(false)}
+                                />
+                            </>
                         )}
                         {codeLang === 'MS Framework (Semantic Kernel)' && !chatflowApiKeyId && (
                             <Box sx={{ maxHeight: '60vh', overflow: 'auto', border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
