@@ -8,9 +8,13 @@ import { generateAgentflowv2 as generateAgentflowv2_json } from 'flowise-compone
 import { z } from 'zod'
 import { sysPrompt, langGraphSystemPrompt } from './prompt'
 import { databaseEntities } from '../../utils'
+import { decryptCredentialData } from '../../utils'
 import logger from '../../utils/logger'
 import { MODE } from '../../Interface'
 import OpenAI from 'openai'
+import { Credential } from '../../database/entities/Credential'
+
+const REDACTED_CREDENTIAL_VALUE_PREFIX = '_FLOWISE_BLANK_'
 
 /** OpenAI chat model ids from flowise-components `models.json` (ChatOpenAI node list). */
 export const getOpenAIChatModelsForLangGraph = (): { label: string; name: string }[] => {
@@ -22,9 +26,9 @@ export const getOpenAIChatModelsForLangGraph = (): { label: string; name: string
         const parsed = JSON.parse(raw) as { chat?: Array<{ name: string; models: { label: string; name: string }[] }> }
         const openai = parsed.chat?.find((p) => p.name === 'chatOpenAI')
         const models = openai?.models?.map((m) => ({ label: m.label, name: m.name })) ?? []
-        return models.length ? models : [{ label: 'gpt-4o-mini', name: 'gpt-4o-mini' }]
+        return models.length ? models : [{ label: 'gpt-5.1', name: 'gpt-5.1' }]
     } catch {
-        return [{ label: 'gpt-4o-mini', name: 'gpt-4o-mini' }]
+        return [{ label: 'gpt-5.1', name: 'gpt-5.1' }]
     }
 }
 
@@ -284,6 +288,58 @@ type LangGraphLogEvent = {
     payload: any
 }
 
+type LangGraphCredentialOptions = {
+    credentialId?: string
+    workspaceId?: string
+}
+
+const resolveOpenAIApiKeyFromStoredCredential = async (options?: LangGraphCredentialOptions): Promise<string | undefined> => {
+    const appServer = getRunningExpressApp()
+    const credentialRepo = appServer.AppDataSource.getRepository(Credential)
+
+    const extractOpenAIKey = async (credential: Credential): Promise<string | undefined> => {
+        try {
+            // Use raw decrypted data (no password redaction), otherwise API keys become _FLOWISE_BLANK_*
+            const decrypted = await decryptCredentialData(credential.encryptedData)
+            const key = decrypted?.openAIApiKey
+            if (typeof key !== 'string') return undefined
+            const trimmed = key.trim()
+            if (!trimmed || trimmed.startsWith(REDACTED_CREDENTIAL_VALUE_PREFIX)) return undefined
+            return trimmed
+        } catch {
+            return undefined
+        }
+    }
+
+    if (options?.credentialId) {
+        const lookup = options.workspaceId
+            ? { id: options.credentialId, workspaceId: options.workspaceId }
+            : { id: options.credentialId }
+        const credential = await credentialRepo.findOneBy(lookup)
+        if (!credential) {
+            throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Credential ${options.credentialId} not found`)
+        }
+        const key = await extractOpenAIKey(credential)
+        if (!key) {
+            throw new InternalFlowiseError(
+                StatusCodes.BAD_REQUEST,
+                `Credential ${options.credentialId} does not contain openAIApiKey`
+            )
+        }
+        return key
+    }
+
+    const credentials = options?.workspaceId
+        ? await credentialRepo.findBy({ workspaceId: options.workspaceId })
+        : await credentialRepo.find()
+    for (const credential of credentials) {
+        const key = await extractOpenAIKey(credential)
+        if (key) return key
+    }
+
+    return undefined
+}
+
 /* Disabled: local heuristic validation (use with LLM repair when re-enabled)
 const validateLangGraphCode = (code: string): LangGraphValidationResult => {
     const issues: string[] = []
@@ -380,18 +436,22 @@ const generateLangGraphCodeStream = async (
     instruction?: string,
     onLog?: (log: LangGraphLogEvent) => void,
     onToken?: (phase: string, token: string) => void,
-    modelOverride?: string
+    modelOverride?: string,
+    credentialOptions?: LangGraphCredentialOptions
 ) => {
     try {
-        const apiKey = process.env.OPENAI_API_KEY
+        const apiKey = (await resolveOpenAIApiKeyFromStoredCredential(credentialOptions)) || process.env.OPENAI_API_KEY
         if (!apiKey) {
-            throw new InternalFlowiseError(StatusCodes.BAD_REQUEST, 'OPENAI_API_KEY is not configured.')
+            throw new InternalFlowiseError(
+                StatusCodes.BAD_REQUEST,
+                'OpenAI API key is not configured. Add an OpenAI credential or set OPENAI_API_KEY.'
+            )
         }
 
         const model =
             typeof modelOverride === 'string' && modelOverride.trim().length > 0
                 ? modelOverride.trim()
-                : process.env.OPENAI_LANGGRAPH_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini'
+                : process.env.OPENAI_LANGGRAPH_MODEL || process.env.OPENAI_MODEL || 'gpt-5.1'
         const userPrompt = getLangGraphUserPrompt(flowData, instruction)
         const client = new OpenAI({ apiKey })
 

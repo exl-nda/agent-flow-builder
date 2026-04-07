@@ -26,7 +26,7 @@ import { vscodeDark } from '@uiw/codemirror-theme-vscode'
 import { sublime } from '@uiw/codemirror-theme-sublime'
 import chatflowsApi from '@/api/chatflows'
 
-const DEFAULT_MODEL = 'gpt-4o-mini'
+const DEFAULT_MODEL = 'gpt-5.1'
 
 const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
     const theme = useTheme()
@@ -42,6 +42,7 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
     const [modelOptions, setModelOptions] = useState([])
     const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL)
     const chatScrollRef = useRef(null)
+    const editorViewRef = useRef(null)
     const currentTokenPhaseRef = useRef('')
 
     const parseSSEEvent = (eventBlock) => {
@@ -91,7 +92,17 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
     }
 
     const effectiveModelOptions =
-        modelOptions.length > 0 ? modelOptions : [{ label: `${DEFAULT_MODEL} (loading list…)`, name: DEFAULT_MODEL }]
+        modelOptions.length > 0
+            ? modelOptions.some((m) => m.name === DEFAULT_MODEL)
+                ? modelOptions
+                : [{ label: DEFAULT_MODEL, name: DEFAULT_MODEL }, ...modelOptions]
+            : [{ label: `${DEFAULT_MODEL} (loading list…)`, name: DEFAULT_MODEL }]
+
+    const scrollEditorToBottom = useCallback(() => {
+        const view = editorViewRef.current
+        if (!view?.scrollDOM) return
+        view.scrollDOM.scrollTop = view.scrollDOM.scrollHeight
+    }, [])
 
     const copyToClipboard = async (text) => {
         try {
@@ -111,9 +122,9 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
                 if (cancelled || !Array.isArray(models) || models.length === 0) return
                 setModelOptions(models)
                 setSelectedModel((prev) => {
+                    if (prev === DEFAULT_MODEL) return DEFAULT_MODEL
                     if (models.some((m) => m.name === prev)) return prev
-                    const fallback = models.find((m) => m.name === DEFAULT_MODEL)?.name || models[0].name
-                    return fallback
+                    return DEFAULT_MODEL
                 })
             } catch (e) {
                 console.error('Failed to load OpenAI models for LangGraph workbench:', e)
@@ -127,6 +138,14 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
             cancelled = true
         }
     }, [open])
+
+    useEffect(() => {
+        if (!isGenerating) return
+        const raf = requestAnimationFrame(() => {
+            scrollEditorToBottom()
+        })
+        return () => cancelAnimationFrame(raf)
+    }, [editorCode, isGenerating, scrollEditorToBottom])
 
     const streamLangGraphCode = useCallback(
         async (instruction) => {
@@ -221,6 +240,7 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
                                         })
                                     }
                                     setEditorCode((prev) => prev + event.data.token)
+                                    scrollEditorToBottom()
                                 }
                                 break
                             case 'end':
@@ -465,6 +485,10 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
                             height='430px'
                             theme={isDarkMode ? vscodeDark : sublime}
                             onChange={(value) => setEditorCode(value)}
+                            onCreateEditor={(view) => {
+                                editorViewRef.current = view
+                                scrollEditorToBottom()
+                            }}
                             extensions={[EditorView.lineWrapping]}
                             basicSetup={{
                                 lineNumbers: true,

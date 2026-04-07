@@ -24,7 +24,7 @@ const listOpenAIChatModels = async (_req: Request, res: Response, next: NextFunc
 
 const generateLangGraphCodeStream = async (req: Request, res: Response) => {
     try {
-        const { flowData, instruction, model: requestedModel } = req.body || {}
+        const { flowData, instruction, model: requestedModel, credentialId } = req.body || {}
         if (!flowData || typeof flowData !== 'object') {
             throw new Error('flowData is required')
         }
@@ -46,7 +46,8 @@ const generateLangGraphCodeStream = async (req: Request, res: Response) => {
             payload: {
                 flowData,
                 instruction: instruction || 'Auto-generate LangGraph code from current flow JSON',
-                requestedModel: typeof requestedModel === 'string' ? requestedModel : undefined
+                requestedModel: typeof requestedModel === 'string' ? requestedModel : undefined,
+                credentialId: typeof credentialId === 'string' ? credentialId : undefined
             }
         })
 
@@ -59,7 +60,11 @@ const generateLangGraphCodeStream = async (req: Request, res: Response) => {
             (phase, token) => {
                 writeSSE('token', { phase, token })
             },
-            typeof requestedModel === 'string' ? requestedModel : undefined
+            typeof requestedModel === 'string' ? requestedModel : undefined,
+            {
+                credentialId: typeof credentialId === 'string' ? credentialId : undefined,
+                workspaceId: req.user?.activeWorkspaceId
+            }
         )
 
         const startResponse = {
