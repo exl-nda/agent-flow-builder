@@ -1,0 +1,2358 @@
+From b170535503e597bcf6c890ea57d3a485e1fcf779 Mon Sep 17 00:00:00 2001
+From: Shishir Umrao <shishirumrao.knp@gmail.com>
+Date: Tue, 7 Apr 2026 01:37:42 +0530
+Subject: [PATCH] improvised lg code generation
+
+---
+ .../AzureDocumentIntelligence.credential.ts   |  40 ++
+ .../components/nodes/agentflow/Tool/Tool.ts   |  43 +-
+ .../AGENTFLOW.md                              |  35 ++
+ .../Azure.svg                                 |   1 +
+ .../AzureDocumentIntelligenceDigitize.ts      | 209 ++++++++
+ .../ClarificationQuestionHelpdesk.ts          |  74 +++
+ .../DocumentDigitizationCheck.ts              | 108 ++++
+ .../tools/DocumentDigitizationCheck/pdf.svg   |   6 +
+ .../KBSearchHelpdesk/KBSearchHelpdesk.ts      |  90 ++++
+ .../ResponseBuilderHelpdesk.ts                | 118 +++++
+ .../src/azureDocumentIntelligenceUploads.ts   |  28 +
+ packages/components/src/index.ts              |   1 +
+ .../agentflowv2-generator/index.ts            |  89 +++-
+ .../src/routes/agentflowv2-generator/index.ts |   2 +
+ .../services/agentflowv2-generator/index.ts   | 181 ++++++-
+ .../services/agentflowv2-generator/prompt.ts  | 394 ++++++++++++++
+ packages/ui/src/api/chatflows.js              |   5 +-
+ packages/ui/src/menu-items/agentsettings.js   |  44 +-
+ packages/ui/src/views/agentflowsv2/Canvas.jsx |   8 +-
+ packages/ui/src/views/canvas/CanvasHeader.jsx |  48 +-
+ .../ui/src/views/chatflows/APICodeDialog.jsx  |  20 +-
+ .../chatflows/LangGraphWorkbenchDialog.jsx    | 488 ++++++++++++++++++
+ .../ui/src/views/chatmessage/ChatMessage.jsx  |   1 +
+ 23 files changed, 1953 insertions(+), 80 deletions(-)
+ create mode 100644 packages/components/credentials/AzureDocumentIntelligence.credential.ts
+ create mode 100644 packages/components/nodes/tools/AzureDocumentIntelligenceDigitize/AGENTFLOW.md
+ create mode 100644 packages/components/nodes/tools/AzureDocumentIntelligenceDigitize/Azure.svg
+ create mode 100644 packages/components/nodes/tools/AzureDocumentIntelligenceDigitize/AzureDocumentIntelligenceDigitize.ts
+ create mode 100644 packages/components/nodes/tools/ClarificationQuestionHelpdesk/ClarificationQuestionHelpdesk.ts
+ create mode 100644 packages/components/nodes/tools/DocumentDigitizationCheck/DocumentDigitizationCheck.ts
+ create mode 100644 packages/components/nodes/tools/DocumentDigitizationCheck/pdf.svg
+ create mode 100644 packages/components/nodes/tools/KBSearchHelpdesk/KBSearchHelpdesk.ts
+ create mode 100644 packages/components/nodes/tools/ResponseBuilderHelpdesk/ResponseBuilderHelpdesk.ts
+ create mode 100644 packages/components/src/azureDocumentIntelligenceUploads.ts
+ create mode 100644 packages/ui/src/views/chatflows/LangGraphWorkbenchDialog.jsx
+
+diff --git a/packages/components/credentials/AzureDocumentIntelligence.credential.ts b/packages/components/credentials/AzureDocumentIntelligence.credential.ts
+new file mode 100644
+index 00000000..973db5c7
+--- /dev/null
++++ b/packages/components/credentials/AzureDocumentIntelligence.credential.ts
+@@ -0,0 +1,40 @@
++import { INodeParams, INodeCredential } from '../src/Interface'
++
++class AzureDocumentIntelligence implements INodeCredential {
++    label: string
++    name: string
++    version: number
++    inputs: INodeParams[]
++
++    constructor() {
++        this.label = 'Azure AI Document Intelligence'
++        this.name = 'azureDocumentIntelligence'
++        this.version = 1.0
++        this.inputs = [
++            {
++                label: 'Azure Document Intelligence Key',
++                name: 'azureDocumentIntelligenceKey',
++                type: 'password',
++                description: 'API key from your Azure AI Document Intelligence resource (Keys and Endpoint in Azure Portal)'
++            },
++            {
++                label: 'Azure Document Intelligence Endpoint',
++                name: 'azureDocumentIntelligenceEndpoint',
++                type: 'string',
++                description:
++                    'Resource endpoint URL, e.g. https://your-resource.cognitiveservices.azure.com/ (include trailing slash or omit; both work)',
++                placeholder: 'https://your-resource.cognitiveservices.azure.com/'
++            },
++            {
++                label: 'API Version',
++                name: 'apiVersion',
++                type: 'string',
++                description: 'REST API version for Document Intelligence (see Azure docs for supported versions)',
++                placeholder: '2024-11-30',
++                default: '2024-11-30'
++            }
++        ]
++    }
++}
++
++module.exports = { credClass: AzureDocumentIntelligence }
+diff --git a/packages/components/nodes/agentflow/Tool/Tool.ts b/packages/components/nodes/agentflow/Tool/Tool.ts
+index e08c1c55..71a29b95 100644
+--- a/packages/components/nodes/agentflow/Tool/Tool.ts
++++ b/packages/components/nodes/agentflow/Tool/Tool.ts
+@@ -192,7 +192,7 @@ class Tool_Agentflow implements INode {
+             (nodeData?.inputs?.toolAgentflowSelectedToolConfig as ICommonObject) ||
+             {}
+ 
+-        const toolInputArgs = nodeData.inputs?.toolInputArgs as IToolInputArgs[]
++        const toolInputArgs = Array.isArray(nodeData.inputs?.toolInputArgs) ? (nodeData.inputs?.toolInputArgs as IToolInputArgs[]) : []
+         const _toolUpdateState = nodeData.inputs?.toolUpdateState
+ 
+         const state = options.agentflowRuntime?.state as ICommonObject
+@@ -268,11 +268,22 @@ class Tool_Agentflow implements INode {
+         }
+ 
+         for (const item of toolInputArgs) {
+-            const variableName = item.inputArgName
++            const variableName = item?.inputArgName
++            if (!variableName || typeof variableName !== 'string') continue
+             const variableValue = item.inputArgValue
+             toolCallArgs[variableName] = parseInputValue(variableValue)
+         }
+ 
++        const chatInput = typeof input === 'string' ? input : ''
++        if (chatInput) {
++            if (toolCallArgs.userMessage === undefined || toolCallArgs.userMessage === '') {
++                toolCallArgs.userMessage = chatInput
++            }
++            if (toolCallArgs.query === undefined || toolCallArgs.query === '') {
++                toolCallArgs.query = chatInput
++            }
++        }
++
+         const flowConfig = {
+             chatflowId: options.chatflowid,
+             sessionId: options.sessionId,
+@@ -321,6 +332,31 @@ class Tool_Agentflow implements INode {
+                 }
+             }
+ 
++            /** Document digitization check tools return JSON with isDigitized + text for Condition / LLM wiring */
++            let digitizationMeta: { isDigitized: string; text: string } | undefined
++            if (typeof toolOutput === 'string') {
++                try {
++                    const parsed = JSON.parse(toolOutput) as Record<string, unknown>
++                    if (parsed && typeof parsed === 'object') {
++                        let isDigStr: string | undefined
++                        if (typeof parsed.isDigitized === 'boolean') {
++                            isDigStr = parsed.isDigitized ? 'true' : 'false'
++                        } else if (parsed.isDigitized === 'true' || parsed.isDigitized === 'false') {
++                            isDigStr = parsed.isDigitized
++                        }
++                        if (isDigStr !== undefined) {
++                            digitizationMeta = {
++                                isDigitized: isDigStr,
++                                text: typeof parsed.text === 'string' ? parsed.text : ''
++                            }
++                            toolOutput = digitizationMeta.text
++                        }
++                    }
++                } catch {
++                    // not JSON — keep string tool output
++                }
++            }
++
+             if (typeof toolOutput === 'object') {
+                 toolOutput = JSON.stringify(toolOutput, null, 2)
+             }
+@@ -341,6 +377,9 @@ class Tool_Agentflow implements INode {
+                 },
+                 output: {
+                     content: toolOutput,
++                    ...(digitizationMeta
++                        ? { isDigitized: digitizationMeta.isDigitized, text: digitizationMeta.text }
++                        : {}),
+                     artifacts: parsedArtifacts
+                 },
+                 state: newState
+diff --git a/packages/components/nodes/tools/AzureDocumentIntelligenceDigitize/AGENTFLOW.md b/packages/components/nodes/tools/AzureDocumentIntelligenceDigitize/AGENTFLOW.md
+new file mode 100644
+index 00000000..f03731fe
+--- /dev/null
++++ b/packages/components/nodes/tools/AzureDocumentIntelligenceDigitize/AGENTFLOW.md
+@@ -0,0 +1,35 @@
++# Agentflow wiring: digitization → classify / extract
++
++Use this layout so scanned PDFs are OCR’d once while text-based PDFs skip Azure.
++
++## Flow
++
++1. **startAgentflow** — define any `startState` keys you need.
++2. **Upload** — user attaches a PDF (same Flowise upload behavior as other Agentflows).
++3. **toolAgentflow** — **Document Digitization Check** (`documentDigitizationCheck`). No tool arguments; it uses `options.uploads` for the first `application/pdf`.
++4. **conditionAgentflow** — string **Equal** (variables work on string rows; `isDigitized` is `"true"` / `"false"`):
++   - type: **String**
++   - `value1`: `{{ <checkToolNodeId>.output.isDigitized }}`
++   - `operation`: **Equal**
++   - `value2`: `true` (literal string, not boolean)
++5. **Branch “true” (already digitized)** — **llmAgentflow**: pass document text via `{{ <checkToolNodeId>.output.text }}` in the user message or system prompt.
++6. **Branch “false”** — **toolAgentflow** — **Azure Document Intelligence Digitize** (`azureDocumentIntelligenceDigitize`) with **Azure AI Document Intelligence** credential. Then **llmAgentflow** using `{{ <azureToolNodeId>.output.content }}`.
++7. **Converge** — both branches can feed the same **llmAgentflow** configured for JSON classification + field extraction (e.g. `documentType`: `invoice` | `purchase_order` | `shipment_notice`).
++
++## Template variables
++
++| Source node        | Variable examples |
++|--------------------|-------------------|
++| Digitization check | `{{ node.output.isDigitized }}` (`"true"` \| `"false"`), `{{ node.output.text }}` |
++| Azure OCR tool     | `{{ node.output.content }}` (plain string) |
++
++The Tool node always exposes string OCR / text as `output.content`; the check tool also sets `output.isDigitized` and `output.text` when its JSON result is detected.
++
++## Credentials
++
++Create an **Azure AI Document Intelligence** credential (endpoint + key + API version) and assign it to the Azure digitize tool node.
++
++## Manual testing
++
++- **Scanned PDF**: `isDigitized` should be `false`; Azure branch should return non-empty `content`.
++- **Digital PDF**: `isDigitized` should be `true`; you can skip Azure and use `output.text` from the check step.
+diff --git a/packages/components/nodes/tools/AzureDocumentIntelligenceDigitize/Azure.svg b/packages/components/nodes/tools/AzureDocumentIntelligenceDigitize/Azure.svg
+new file mode 100644
+index 00000000..7b150811
+--- /dev/null
++++ b/packages/components/nodes/tools/AzureDocumentIntelligenceDigitize/Azure.svg
+@@ -0,0 +1 @@
++<svg width="32" height="32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.946 5H19l-7.322 22.216a1.15 1.15 0 0 1-.41.568c-.19.14-.42.216-.656.216H5.123a1.11 1.11 0 0 1-.513-.127 1.132 1.132 0 0 1-.4-.352 1.165 1.165 0 0 1-.151-1.038l6.822-20.7a1.15 1.15 0 0 1 .41-.567c.19-.14.42-.216.655-.216Z" fill="#0A5FAB"/><path d="M22.334 20H11.502c-.1 0-.2.031-.282.09a.52.52 0 0 0-.185.241.545.545 0 0 0 .125.576l6.96 6.786c.203.197.47.307.747.307H25l-2.666-8Z" fill="#0078D4"/><path d="M21.035 5.782a1.149 1.149 0 0 0-.415-.566A1.128 1.128 0 0 0 19.957 5H12c.238 0 .47.076.663.216.193.14.338.338.414.566l6.906 20.7a1.16 1.16 0 0 1-.558 1.391 1.12 1.12 0 0 1-.52.127h7.959a1.127 1.127 0 0 0 .923-.48 1.159 1.159 0 0 0 .153-1.038l-6.905-20.7Z" fill="#2C9DE3"/></svg>
+\ No newline at end of file
+diff --git a/packages/components/nodes/tools/AzureDocumentIntelligenceDigitize/AzureDocumentIntelligenceDigitize.ts b/packages/components/nodes/tools/AzureDocumentIntelligenceDigitize/AzureDocumentIntelligenceDigitize.ts
+new file mode 100644
+index 00000000..d3db2f32
+--- /dev/null
++++ b/packages/components/nodes/tools/AzureDocumentIntelligenceDigitize/AzureDocumentIntelligenceDigitize.ts
+@@ -0,0 +1,209 @@
++import { DynamicStructuredTool } from '@langchain/core/tools'
++import { z } from 'zod'
++import { ICommonObject, INode, INodeData, INodeParams } from '../../../src/Interface'
++import { getFirstPdfBufferFromUploads } from '../../../src/azureDocumentIntelligenceUploads'
++import { getBaseClasses, getCredentialData, getCredentialParam } from '../../../src/utils'
++
++const MODEL_ID = 'prebuilt-read'
++const POLL_MS = 2000
++const MAX_POLLS = 180
++
++function normalizeEndpoint(endpoint: string): string {
++    let e = endpoint.trim()
++    if (!e.endsWith('/')) e += '/'
++    return e
++}
++
++function extractTextFromAnalyzeResult(body: any): string {
++    const ar = body?.analyzeResult
++    if (!ar) return ''
++    if (typeof ar.content === 'string' && ar.content.trim()) return ar.content.trim()
++    if (Array.isArray(ar.paragraphs)) {
++        return ar.paragraphs
++            .map((p: { content?: string }) => p?.content ?? '')
++            .filter(Boolean)
++            .join('\n')
++    }
++    if (Array.isArray(ar.pages)) {
++        const lines: string[] = []
++        for (const page of ar.pages) {
++            if (Array.isArray(page.lines)) {
++                for (const line of page.lines) {
++                    if (line?.content) lines.push(line.content)
++                }
++            }
++        }
++        if (lines.length) return lines.join('\n')
++    }
++    return ''
++}
++
++class AzureDocumentIntelligenceDigitize implements INode {
++    label: string
++    name: string
++    version: number
++    description: string
++    type: string
++    icon: string
++    category: string
++    baseClasses: string[]
++    credential: INodeParams
++    inputs: INodeParams[]
++
++    constructor() {
++        this.label = 'Azure Document Intelligence Digitize (prebuilt-read)'
++        this.name = 'azureDocumentIntelligenceDigitize'
++        this.version = 1.0
++        this.type = 'AzureDocumentIntelligenceDigitize'
++        this.icon = 'Azure.svg'
++        this.category = 'Tools'
++        this.description =
++            'Sends the uploaded PDF to Azure AI Document Intelligence prebuilt-read, polls until complete, and returns OCR text for downstream classification or extraction.'
++        this.baseClasses = [this.type, 'Tool', ...getBaseClasses(DynamicStructuredTool)]
++        this.credential = {
++            label: 'Connect Credential',
++            name: 'credential',
++            type: 'credential',
++            credentialNames: ['azureDocumentIntelligence']
++        }
++        this.inputs = [
++            {
++                label: 'Tool Name',
++                name: 'toolName',
++                type: 'string',
++                default: 'azure_document_intelligence_digitize',
++                description: 'Name exposed to the agent',
++                additionalParams: true,
++                optional: true
++            },
++            {
++                label: 'Tool Description',
++                name: 'toolDesc',
++                type: 'string',
++                rows: 4,
++                description: 'When the LLM should call this tool',
++                default:
++                    'Digitizes a scanned PDF using Azure Document Intelligence (OCR). No required arguments; uses the uploaded PDF from the conversation.',
++                additionalParams: true,
++                optional: true
++            },
++            {
++                label: 'Locale (optional)',
++                name: 'locale',
++                type: 'string',
++                placeholder: 'en-US',
++                description: 'Optional BCP-47 locale hint for OCR (passed as query parameter when set)',
++                additionalParams: true,
++                optional: true
++            },
++            {
++                label: 'Pages (optional)',
++                name: 'pages',
++                type: 'string',
++                placeholder: '1-3',
++                description: 'Optional page range, e.g. 1-3 or 1,3,5 (Azure pages query parameter)',
++                additionalParams: true,
++                optional: true
++            },
++            {
++                label: 'Max pages (first N)',
++                name: 'maxPages',
++                type: 'number',
++                default: 10,
++                description: 'Limits analysis to the first N pages (helps with free-tier limits). Set pages/range explicitly to override.',
++                additionalParams: true,
++                optional: true
++            }
++        ]
++    }
++
++    async init(nodeData: INodeData, _: string, options: ICommonObject): Promise<any> {
++        const credentialData = await getCredentialData(nodeData.credential ?? '', options)
++        const apiKey = getCredentialParam('azureDocumentIntelligenceKey', credentialData, nodeData)
++        let endpoint = getCredentialParam('azureDocumentIntelligenceEndpoint', credentialData, nodeData) as string
++        const apiVersion = (getCredentialParam('apiVersion', credentialData, nodeData) as string) || '2024-11-30'
++
++        const toolName = (nodeData.inputs?.toolName as string) || 'azure_document_intelligence_digitize'
++        const toolDesc =
++            (nodeData.inputs?.toolDesc as string) ||
++            'Runs Azure Document Intelligence prebuilt-read OCR on the uploaded PDF and returns plain text.'
++
++        const locale = nodeData.inputs?.locale as string | undefined
++        const pagesOverride = nodeData.inputs?.pages as string | undefined
++        const maxPages = (nodeData.inputs?.maxPages as number) ?? 10
++
++        const schema = z.object({
++            pages: z.string().optional().describe('Optional page range for this call, e.g. 1-5'),
++            locale: z.string().optional().describe('Optional BCP-47 locale for this call')
++        })
++
++        return new DynamicStructuredTool({
++            name: toolName,
++            description: toolDesc,
++            schema,
++            func: async (args: z.infer<typeof schema>) => {
++                const found = await getFirstPdfBufferFromUploads(options)
++                if (!found) {
++                    throw new Error('No application/pdf upload found. Upload a PDF before running this tool.')
++                }
++
++                endpoint = normalizeEndpoint(endpoint)
++                const pagesParam = args?.pages || pagesOverride || (maxPages > 0 ? `1-${maxPages}` : undefined)
++                const localeParam = args?.locale || locale
++
++                let url = `${endpoint}documentintelligence/documentModels/${MODEL_ID}:analyze?api-version=${encodeURIComponent(apiVersion)}`
++                const qp: string[] = []
++                if (pagesParam) qp.push(`pages=${encodeURIComponent(pagesParam)}`)
++                if (localeParam) qp.push(`locale=${encodeURIComponent(localeParam)}`)
++                if (qp.length) url += `&${qp.join('&')}`
++
++                const submit = await fetch(url, {
++                    method: 'POST',
++                    headers: {
++                        'Ocp-Apim-Subscription-Key': apiKey,
++                        'Content-Type': 'application/pdf'
++                    },
++                    body: new Uint8Array(found.buffer)
++                })
++
++                if (submit.status !== 202) {
++                    const errText = await submit.text()
++                    throw new Error(`Azure Document Intelligence analyze failed (${submit.status}): ${errText}`)
++                }
++
++                const opLocation = submit.headers.get('operation-location') || submit.headers.get('Operation-Location')
++                if (!opLocation) {
++                    throw new Error('Azure Document Intelligence did not return Operation-Location header')
++                }
++
++                let resultBody: any
++                for (let i = 0; i < MAX_POLLS; i++) {
++                    await new Promise((r) => setTimeout(r, POLL_MS))
++                    const poll = await fetch(opLocation, {
++                        headers: { 'Ocp-Apim-Subscription-Key': apiKey }
++                    })
++                    if (!poll.ok) {
++                        const t = await poll.text()
++                        throw new Error(`Azure Document Intelligence poll failed (${poll.status}): ${t}`)
++                    }
++                    resultBody = await poll.json()
++                    const st = resultBody?.status
++                    if (st === 'succeeded') break
++                    if (st === 'failed') {
++                        const err = resultBody?.error?.message || JSON.stringify(resultBody?.error || resultBody)
++                        throw new Error(`Azure Document Intelligence failed: ${err}`)
++                    }
++                }
++
++                if (resultBody?.status !== 'succeeded') {
++                    throw new Error('Azure Document Intelligence timed out waiting for analysis to complete')
++                }
++
++                const text = extractTextFromAnalyzeResult(resultBody)
++                return text
++            }
++        })
++    }
++}
++
++module.exports = { nodeClass: AzureDocumentIntelligenceDigitize }
+diff --git a/packages/components/nodes/tools/ClarificationQuestionHelpdesk/ClarificationQuestionHelpdesk.ts b/packages/components/nodes/tools/ClarificationQuestionHelpdesk/ClarificationQuestionHelpdesk.ts
+new file mode 100644
+index 00000000..97e09ec9
+--- /dev/null
++++ b/packages/components/nodes/tools/ClarificationQuestionHelpdesk/ClarificationQuestionHelpdesk.ts
+@@ -0,0 +1,74 @@
++import { z } from 'zod'
++import { INode } from '../../../src/Interface'
++import { DynamicStructuredTool } from '../CustomTool/core'
++
++const code = `
++const userMessage = typeof $userMessage !== 'undefined' ? $userMessage : ''
++const missingFields = typeof $missingFields !== 'undefined' ? $missingFields : undefined
++
++const msg = String(userMessage || '').replace(/<[^>]*>/g, ' ').trim()
++const missing = Array.isArray(missingFields) ? missingFields.filter(Boolean) : []
++
++const baseQuestion = 'Please share your OS, exact error text, and when the issue started.'
++const extra = missing.length ? (' Missing details: ' + missing.join(', ')) : ''
++
++return {
++  question: baseQuestion + extra,
++  reason: 'Insufficient issue detail for accurate troubleshooting.',
++  originalMessage: msg
++}
++`
++
++class ClarificationQuestionHelpdesk_Tools implements INode {
++    label: string
++    name: string
++    version: number
++    description: string
++    type: string
++    icon: string
++    category: string
++    baseClasses: string[]
++
++    constructor() {
++        this.label = 'Clarification Question (Helpdesk)'
++        this.name = 'clarificationQuestionHelpdesk'
++        this.version = 1.0
++        this.type = 'ClarificationQuestionHelpdesk'
++        this.icon = 'customtool.svg'
++        this.category = 'Tools'
++        this.description = 'Generate one focused follow-up question for unclear issues.'
++        this.baseClasses = [this.type, 'Tool']
++    }
++
++    async init(): Promise<any> {
++        const obj = {
++            name: 'clarification_question_helpdesk',
++            description: 'Ask a focused clarification question to collect missing issue details.',
++            schema: z.object({
++                userMessage: z.preprocess((v) => (v == null ? '' : String(v)), z.string()).describe('User message to clarify'),
++                missingFields: z.preprocess(
++                    (v) => {
++                        if (v == null || v === '') return undefined
++                        if (Array.isArray(v)) return v.map(String)
++                        if (typeof v === 'string') {
++                            try {
++                                const p = JSON.parse(v)
++                                return Array.isArray(p) ? p.map(String) : undefined
++                            } catch {
++                                return undefined
++                            }
++                        }
++                        return undefined
++                    },
++                    z.array(z.string()).optional()
++                ).describe('Known missing fields')
++            }),
++            code
++        }
++
++        return new DynamicStructuredTool(obj)
++    }
++}
++
++module.exports = { nodeClass: ClarificationQuestionHelpdesk_Tools }
++
+diff --git a/packages/components/nodes/tools/DocumentDigitizationCheck/DocumentDigitizationCheck.ts b/packages/components/nodes/tools/DocumentDigitizationCheck/DocumentDigitizationCheck.ts
+new file mode 100644
+index 00000000..d57c204c
+--- /dev/null
++++ b/packages/components/nodes/tools/DocumentDigitizationCheck/DocumentDigitizationCheck.ts
+@@ -0,0 +1,108 @@
++import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf'
++import { DynamicStructuredTool } from '@langchain/core/tools'
++import { z } from 'zod'
++import { ICommonObject, INode, INodeData, INodeParams } from '../../../src/Interface'
++import { getFirstPdfBufferFromUploads } from '../../../src/azureDocumentIntelligenceUploads'
++import { getBaseClasses } from '../../../src/utils'
++
++const DEFAULT_MIN_CHARS = 50
++
++class DocumentDigitizationCheck implements INode {
++    label: string
++    name: string
++    version: number
++    description: string
++    type: string
++    icon: string
++    category: string
++    baseClasses: string[]
++    inputs: INodeParams[]
++
++    constructor() {
++        this.label = 'Document Digitization Check'
++        this.name = 'documentDigitizationCheck'
++        this.version = 1.1
++        this.type = 'DocumentDigitizationCheck'
++        this.icon = 'pdf.svg'
++        this.category = 'Tools'
++        this.description =
++            'Reads the uploaded PDF locally (embedded text). Returns isDigitized as the strings "true" or "false" (for string-based Condition) plus extracted text. Use with Agentflow Condition to skip Azure OCR when not needed.'
++        this.baseClasses = [this.type, 'Tool', ...getBaseClasses(DynamicStructuredTool)]
++        this.inputs = [
++            {
++                label: 'Minimum Characters',
++                name: 'minChars',
++                type: 'number',
++                default: DEFAULT_MIN_CHARS,
++                description:
++                    'If extracted text has at least this many non-whitespace characters, the PDF is treated as already digitized (embedded text).'
++            },
++            {
++                label: 'Tool Name',
++                name: 'toolName',
++                type: 'string',
++                default: 'document_digitization_check',
++                description: 'Name exposed to the agent',
++                additionalParams: true,
++                optional: true
++            },
++            {
++                label: 'Tool Description',
++                name: 'toolDesc',
++                type: 'string',
++                rows: 4,
++                description: 'When the LLM should call this tool',
++                default:
++                    'Checks whether the uploaded PDF already contains extractable text (digitized). Returns JSON with isDigitized ("true"|"false") and text. No arguments required; uses the file from the current upload.',
++                additionalParams: true,
++                optional: true
++            }
++        ]
++    }
++
++    async init(nodeData: INodeData, _: string, options: ICommonObject): Promise<any> {
++        const minChars = (nodeData.inputs?.minChars as number) ?? DEFAULT_MIN_CHARS
++        const toolName = (nodeData.inputs?.toolName as string) || 'document_digitization_check'
++        const toolDesc =
++            (nodeData.inputs?.toolDesc as string) ||
++            'Checks whether the uploaded PDF already contains extractable text (digitized). Returns isDigitized as "true" or "false" strings for Condition (string Equal). Uses the uploaded PDF from the conversation.'
++
++        return new DynamicStructuredTool({
++            name: toolName,
++            description: toolDesc,
++            schema: z.object({}),
++            func: async () => {
++                const found = await getFirstPdfBufferFromUploads(options)
++                if (!found) {
++                    return JSON.stringify({
++                        isDigitized: 'false',
++                        text: '',
++                        error: 'No application/pdf upload found. Upload a PDF first.'
++                    })
++                }
++
++                const loader = new PDFLoader(new Blob([found.buffer]), {
++                    splitPages: false,
++                    pdfjs: () =>
++                        // @ts-ignore
++                        import('pdf-parse/lib/pdf.js/v1.10.100/build/pdf.js')
++                })
++                const docs = await loader.load()
++                let text = ''
++                for (const d of docs) {
++                    text += d.pageContent + '\n'
++                }
++                text = text.trim()
++                const significant = text.replace(/\s/g, '').length
++                const isDigitized = significant >= minChars
++
++                return JSON.stringify({
++                    isDigitized: isDigitized ? 'true' : 'false',
++                    text
++                })
++            }
++        })
++    }
++}
++
++module.exports = { nodeClass: DocumentDigitizationCheck }
+diff --git a/packages/components/nodes/tools/DocumentDigitizationCheck/pdf.svg b/packages/components/nodes/tools/DocumentDigitizationCheck/pdf.svg
+new file mode 100644
+index 00000000..5042b227
+--- /dev/null
++++ b/packages/components/nodes/tools/DocumentDigitizationCheck/pdf.svg
+@@ -0,0 +1,6 @@
++<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
++<path d="M14 27V20H16C17.933 20 19.5 21.567 19.5 23.5C19.5 25.433 17.933 27 16 27H14Z" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
++<path d="M23 27V20H27M23 24H26" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
++<path d="M6 27V20H9C10.1046 20 11 20.8954 11 22C11 23.1046 10.1046 24 9 24H6" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
++<path d="M18 5H9C7.89543 5 7 5.89543 7 7V15M18 5L25 12M18 5V12H25M25 12V15" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
++</svg>
+diff --git a/packages/components/nodes/tools/KBSearchHelpdesk/KBSearchHelpdesk.ts b/packages/components/nodes/tools/KBSearchHelpdesk/KBSearchHelpdesk.ts
+new file mode 100644
+index 00000000..4fde095c
+--- /dev/null
++++ b/packages/components/nodes/tools/KBSearchHelpdesk/KBSearchHelpdesk.ts
+@@ -0,0 +1,90 @@
++import { z } from 'zod'
++import { INode } from '../../../src/Interface'
++import { DynamicStructuredTool } from '../CustomTool/core'
++
++const code = `
++const kb = [
++  {
++    category: 'network',
++    title: 'Fix VPN Disconnects on macOS',
++    snippet: 'Reset VPN profile, flush DNS, and re-authenticate with SSO.',
++    url: 'https://kb.example.local/network/vpn-macos',
++    confidence: 0.91
++  },
++  {
++    category: 'password',
++    title: 'Reset Corporate Password',
++    snippet: 'Use self-service reset, then sign out from all sessions and re-login.',
++    url: 'https://kb.example.local/account/password-reset',
++    confidence: 0.94
++  },
++  {
++    category: 'device',
++    title: 'Laptop Won’t Boot',
++    snippet: 'Run hardware diagnostics and verify disk health before OS recovery.',
++    url: 'https://kb.example.local/device/boot-failure',
++    confidence: 0.88
++  }
++]
++
++const query = typeof $query !== 'undefined' ? $query : ''
++const category = typeof $category !== 'undefined' ? $category : ''
++const sanitize = (v) => String(v || '').replace(/<[^>]*>/g, ' ').toLowerCase()
++const q = sanitize(query)
++const requestedCategory = sanitize(category)
++
++const inferredCategory =
++  q.includes('vpn') || q.includes('wifi') || q.includes('network')
++    ? 'network'
++    : q.includes('password') || q.includes('login') || q.includes('signin')
++      ? 'password'
++      : q.includes('boot') || q.includes('laptop') || q.includes('device')
++        ? 'device'
++        : (requestedCategory || 'other')
++
++const articles = kb.filter((item) => item.category === inferredCategory).slice(0, 3)
++return {
++  category: inferredCategory,
++  articles
++}
++`
++
++class KBSearchHelpdesk_Tools implements INode {
++    label: string
++    name: string
++    version: number
++    description: string
++    type: string
++    icon: string
++    category: string
++    baseClasses: string[]
++
++    constructor() {
++        this.label = 'KB Search (Helpdesk)'
++        this.name = 'kbSearchHelpdesk'
++        this.version = 1.0
++        this.type = 'KBSearchHelpdesk'
++        this.icon = 'customtool.svg'
++        this.category = 'Tools'
++        this.description = 'Search an internal IT helpdesk KB using issue text.'
++        this.baseClasses = [this.type, 'Tool']
++    }
++
++    async init(): Promise<any> {
++        const obj = {
++            name: 'kb_search_helpdesk',
++            description: 'Search internal helpdesk KB and return top matching articles.',
++            schema: z.object({
++                query: z.preprocess((v) => (v == null ? '' : String(v)), z.string()).describe('User issue message'),
++                category: z.preprocess((v) => (v == null || v === '' ? undefined : String(v)), z.string().optional()),
++                severity: z.preprocess((v) => (v == null || v === '' ? undefined : String(v)), z.string().optional())
++            }),
++            code
++        }
++
++        return new DynamicStructuredTool(obj)
++    }
++}
++
++module.exports = { nodeClass: KBSearchHelpdesk_Tools }
++
+diff --git a/packages/components/nodes/tools/ResponseBuilderHelpdesk/ResponseBuilderHelpdesk.ts b/packages/components/nodes/tools/ResponseBuilderHelpdesk/ResponseBuilderHelpdesk.ts
+new file mode 100644
+index 00000000..3cfe33e4
+--- /dev/null
++++ b/packages/components/nodes/tools/ResponseBuilderHelpdesk/ResponseBuilderHelpdesk.ts
+@@ -0,0 +1,118 @@
++import { z } from 'zod'
++import { INode } from '../../../src/Interface'
++import { DynamicStructuredTool } from '../CustomTool/core'
++
++const code = `
++const sanitize = (v) => String(v || '').replace(/<[^>]*>/g, ' ').trim()
++const normalize = (v) => sanitize(v).toLowerCase()
++
++const userMessage = typeof $userMessage !== 'undefined' ? $userMessage : ''
++const kbResults = typeof $kbResults !== 'undefined' ? $kbResults : undefined
++const clarificationRaw = typeof $clarificationAnswer !== 'undefined' ? $clarificationAnswer : undefined
++let kb = kbResults
++if (typeof kb === 'string') {
++  try {
++    kb = JSON.parse(kb)
++  } catch (e) {
++    kb = kb
++  }
++}
++
++let clarification = clarificationRaw
++if (typeof clarification === 'string') {
++  try {
++    clarification = JSON.parse(clarification)
++  } catch (e) {
++    clarification = clarification
++  }
++}
++
++const firstArticle = Array.isArray(kb?.articles) ? kb.articles[0] : (Array.isArray(kb) ? kb[0] : null)
++
++if (firstArticle) {
++  return (
++    'Here is what to try first: ' + firstArticle.title + '. ' +
++    'Steps: ' + firstArticle.snippet + ' ' +
++    'Reference: ' + firstArticle.url
++  )
++}
++
++const question = clarification?.question || sanitize(clarification)
++if (question) {
++  return 'I need one more detail before suggesting steps: ' + question
++}
++
++// Fallback path: if kbResults weren't bound, infer likely issue directly from user message.
++const text = normalize(userMessage)
++const inferred = text.includes('vpn') || text.includes('wifi') || text.includes('network')
++  ? {
++      title: 'Fix VPN Disconnects on macOS',
++      snippet: 'Reset VPN profile, flush DNS, and re-authenticate with SSO.',
++      url: 'https://kb.example.local/network/vpn-macos'
++    }
++  : text.includes('password') || text.includes('login') || text.includes('signin')
++    ? {
++        title: 'Reset Corporate Password',
++        snippet: 'Use self-service reset, then sign out from all sessions and re-login.',
++        url: 'https://kb.example.local/account/password-reset'
++      }
++    : text.includes('boot') || text.includes('laptop') || text.includes('device')
++      ? {
++          title: 'Laptop Won’t Boot',
++          snippet: 'Run hardware diagnostics and verify disk health before OS recovery.',
++          url: 'https://kb.example.local/device/boot-failure'
++        }
++      : null
++
++if (inferred) {
++  return (
++    'Here is what to try first: ' + inferred.title + '. ' +
++    'Steps: ' + inferred.snippet + ' ' +
++    'Reference: ' + inferred.url
++  )
++}
++
++return 'Please share your OS, exact error message, and when the issue started so I can suggest a precise fix.'
++`
++
++class ResponseBuilderHelpdesk_Tools implements INode {
++    label: string
++    name: string
++    version: number
++    description: string
++    type: string
++    icon: string
++    category: string
++    baseClasses: string[]
++
++    constructor() {
++        this.label = 'Response Builder (Helpdesk)'
++        this.name = 'responseBuilderHelpdesk'
++        this.version = 1.0
++        this.type = 'ResponseBuilderHelpdesk'
++        this.icon = 'customtool.svg'
++        this.category = 'Tools'
++        this.description = 'Compose final IT helpdesk response and escalation metadata.'
++        this.baseClasses = [this.type, 'Tool']
++    }
++
++    async init(): Promise<any> {
++        const obj = {
++            name: 'response_builder_helpdesk',
++            description: 'Generate final response from KB results or clarification output.',
++            schema: z.object({
++                userMessage: z.preprocess((v) => (v == null ? undefined : String(v)), z.string().optional()),
++                kbResults: z.any().optional().describe('Output from KB search tool'),
++                clarificationAnswer: z.any().optional().describe('Output from clarification tool'),
++                category: z.preprocess((v) => (v == null || v === '' ? undefined : String(v)), z.string().optional()),
++                severity: z.preprocess((v) => (v == null || v === '' ? undefined : String(v)), z.string().optional())
++            }),
++            code
++        }
++
++        return new DynamicStructuredTool(obj)
++    }
++}
++
++module.exports = { nodeClass: ResponseBuilderHelpdesk_Tools }
++
+diff --git a/packages/components/src/azureDocumentIntelligenceUploads.ts b/packages/components/src/azureDocumentIntelligenceUploads.ts
+new file mode 100644
+index 00000000..c101eadd
+--- /dev/null
++++ b/packages/components/src/azureDocumentIntelligenceUploads.ts
+@@ -0,0 +1,28 @@
++import { ICommonObject, IFileUpload } from './Interface'
++import { getFileFromStorage } from './storageUtils'
++
++/**
++ * Returns the first uploaded PDF (by mime or .pdf name) as bytes from Flowise storage.
++ */
++export async function getFirstPdfBufferFromUploads(options: ICommonObject): Promise<{ buffer: Buffer; fileName: string } | null> {
++    const uploads = options.uploads as IFileUpload[] | undefined
++    if (!uploads?.length) return null
++
++    const pdf = uploads.find((u) => u.mime === 'application/pdf' || u.name?.toLowerCase().endsWith('.pdf'))
++    if (!pdf?.name) return null
++
++    let rawName = pdf.name.replace(/^FILE-STORAGE::/, '')
++    let fileName = rawName
++    if (rawName.startsWith('[') && rawName.endsWith(']')) {
++        const files = JSON.parse(rawName) as string[]
++        fileName = files[0] ?? ''
++    }
++    if (!fileName) return null
++
++    const orgId = options.orgId as string
++    const chatflowid = options.chatflowid as string
++    const chatId = options.chatId as string
++    const paths = chatId ? [orgId, chatflowid, chatId] : [orgId, chatflowid]
++    const buffer = await getFileFromStorage(fileName, ...paths)
++    return { buffer, fileName }
++}
+diff --git a/packages/components/src/index.ts b/packages/components/src/index.ts
+index 8003d9d3..65645892 100644
+--- a/packages/components/src/index.ts
++++ b/packages/components/src/index.ts
+@@ -9,6 +9,7 @@ export * from './utils'
+ export * from './speechToText'
+ export * from './textToSpeech'
+ export * from './storageUtils'
++export * from './azureDocumentIntelligenceUploads'
+ export * from './handler'
+ export * from '../evaluation/EvaluationRunner'
+ export * from './followUpPrompts'
+diff --git a/packages/server/src/controllers/agentflowv2-generator/index.ts b/packages/server/src/controllers/agentflowv2-generator/index.ts
+index 7d410040..d28b9994 100644
+--- a/packages/server/src/controllers/agentflowv2-generator/index.ts
++++ b/packages/server/src/controllers/agentflowv2-generator/index.ts
+@@ -1,5 +1,5 @@
+ import { Request, Response, NextFunction } from 'express'
+-import agentflowv2Service from '../../services/agentflowv2-generator'
++import agentflowv2Service, { getOpenAIChatModelsForLangGraph } from '../../services/agentflowv2-generator'
+ 
+ const generateAgentflowv2 = async (req: Request, res: Response, next: NextFunction) => {
+     try {
+@@ -13,6 +13,91 @@ const generateAgentflowv2 = async (req: Request, res: Response, next: NextFuncti
+     }
+ }
+ 
++const listOpenAIChatModels = async (_req: Request, res: Response, next: NextFunction) => {
++    try {
++        const models = getOpenAIChatModelsForLangGraph()
++        return res.json({ models })
++    } catch (error) {
++        next(error)
++    }
++}
++
++const generateLangGraphCodeStream = async (req: Request, res: Response) => {
++    try {
++        const { flowData, instruction, model: requestedModel } = req.body || {}
++        if (!flowData || typeof flowData !== 'object') {
++            throw new Error('flowData is required')
++        }
++
++        res.setHeader('Content-Type', 'text/event-stream')
++        res.setHeader('Cache-Control', 'no-cache')
++        res.setHeader('Connection', 'keep-alive')
++        res.setHeader('Access-Control-Allow-Origin', '*')
++        res.setHeader('Access-Control-Allow-Headers', 'Cache-Control')
++
++        const writeSSE = (event: string, data: any) => {
++            res.write(`event: ${event}\n`)
++            res.write(`data: ${JSON.stringify({ event, data })}\n\n`)
++        }
++
++        writeSSE('log', {
++            phase: 'input',
++            type: 'request',
++            payload: {
++                flowData,
++                instruction: instruction || 'Auto-generate LangGraph code from current flow JSON',
++                requestedModel: typeof requestedModel === 'string' ? requestedModel : undefined
++            }
++        })
++
++        const { code, model, artifact } = await agentflowv2Service.generateLangGraphCodeStream(
++            flowData,
++            instruction,
++            (log) => {
++                writeSSE('log', log)
++            },
++            (phase, token) => {
++                writeSSE('token', { phase, token })
++            },
++            typeof requestedModel === 'string' ? requestedModel : undefined
++        )
++
++        const startResponse = {
++            event: 'start',
++            data: {
++                model,
++                artifact
++            }
++        }
++        writeSSE('start', startResponse)
++
++        // Tokens are streamed live via onToken callback above.
++
++        const endResponse = {
++            event: 'end',
++            data: '[DONE]',
++            code
++        }
++        writeSSE('end', endResponse)
++        res.end()
++    } catch (error) {
++        if (!res.headersSent) {
++            res.setHeader('Content-Type', 'text/event-stream')
++            res.setHeader('Cache-Control', 'no-cache')
++            res.setHeader('Connection', 'keep-alive')
++        }
++        const errorResponse = {
++            event: 'error',
++            data: error instanceof Error ? error.message : 'LangGraph generation failed'
++        }
++        res.write('event: error\n')
++        res.write(`data: ${JSON.stringify(errorResponse)}\n\n`)
++        res.end()
++    }
++}
++
+ export default {
+-    generateAgentflowv2
++    generateAgentflowv2,
++    generateLangGraphCodeStream,
++    listOpenAIChatModels
+ }
+diff --git a/packages/server/src/routes/agentflowv2-generator/index.ts b/packages/server/src/routes/agentflowv2-generator/index.ts
+index 6d289550..b561f0d2 100644
+--- a/packages/server/src/routes/agentflowv2-generator/index.ts
++++ b/packages/server/src/routes/agentflowv2-generator/index.ts
+@@ -3,5 +3,7 @@ import agentflowv2GeneratorController from '../../controllers/agentflowv2-genera
+ const router = express.Router()
+ 
+ router.post('/generate', agentflowv2GeneratorController.generateAgentflowv2)
++router.get('/openai-chat-models', agentflowv2GeneratorController.listOpenAIChatModels)
++router.post('/langgraph-code/stream', agentflowv2GeneratorController.generateLangGraphCodeStream)
+ 
+ export default router
+diff --git a/packages/server/src/services/agentflowv2-generator/index.ts b/packages/server/src/services/agentflowv2-generator/index.ts
+index c41a2018..82effa6c 100644
+--- a/packages/server/src/services/agentflowv2-generator/index.ts
++++ b/packages/server/src/services/agentflowv2-generator/index.ts
+@@ -6,10 +6,27 @@ import path from 'path'
+ import * as fs from 'fs'
+ import { generateAgentflowv2 as generateAgentflowv2_json } from 'flowise-components'
+ import { z } from 'zod'
+-import { sysPrompt } from './prompt'
++import { sysPrompt, langGraphSystemPrompt } from './prompt'
+ import { databaseEntities } from '../../utils'
+ import logger from '../../utils/logger'
+ import { MODE } from '../../Interface'
++import OpenAI from 'openai'
++
++/** OpenAI chat model ids from flowise-components `models.json` (ChatOpenAI node list). */
++export const getOpenAIChatModelsForLangGraph = (): { label: string; name: string }[] => {
++    try {
++        const pkgJson = require.resolve('flowise-components/package.json')
++        const dir = path.dirname(pkgJson)
++        const modelsPath = path.join(dir, 'models.json')
++        const raw = fs.readFileSync(modelsPath, 'utf8')
++        const parsed = JSON.parse(raw) as { chat?: Array<{ name: string; models: { label: string; name: string }[] }> }
++        const openai = parsed.chat?.find((p) => p.name === 'chatOpenAI')
++        const models = openai?.models?.map((m) => ({ label: m.label, name: m.name })) ?? []
++        return models.length ? models : [{ label: 'gpt-4o-mini', name: 'gpt-4o-mini' }]
++    } catch {
++        return [{ label: 'gpt-4o-mini', name: 'gpt-4o-mini' }]
++    }
++}
+ 
+ // Define the Zod schema for Agentflowv2 data structure
+ const NodeType = z.object({
+@@ -248,6 +265,166 @@ const generateAgentflowv2 = async (question: string, selectedChatModel: Record<s
+     }
+ }
+ 
++const getLangGraphUserPrompt = (flowData: Record<string, any>, instruction?: string) => {
++    const serializedFlow = JSON.stringify(flowData, null, 2)
++    const additionalInstruction = instruction?.trim()
++        ? `\n\n### ADDITIONAL INSTRUCTION\n${instruction.trim()}\n`
++        : ''
++    return `${serializedFlow}${additionalInstruction}`
++}
++
++type LangGraphValidationResult = {
++    passed: boolean
++    issues: string[]
++}
++
++type LangGraphLogEvent = {
++    phase: string
++    type: 'request' | 'response' | 'validation'
++    payload: any
++}
++
++/* Disabled: local heuristic validation (use with LLM repair when re-enabled)
++const validateLangGraphCode = (code: string): LangGraphValidationResult => {
++    const issues: string[] = []
++    const normalized = code || ''
++
++    if (!/TypedDict/.test(normalized)) {
++        issues.push('Missing TypedDict state schema.')
++    }
++    if (!/StateGraph\s*\(/.test(normalized)) {
++        issues.push('Missing StateGraph construction.')
++    }
++    if (!/(set_entry_point\s*\()|(START)/.test(normalized)) {
++        issues.push('Missing graph entry point (set_entry_point or START).')
++    }
++    if (!/END/.test(normalized)) {
++        issues.push('Missing END node usage.')
++    }
++    if (!/compile\s*\(/.test(normalized)) {
++        issues.push('Missing compile() call.')
++    }
++    if (!/invoke\s*\(/.test(normalized)) {
++        issues.push('Missing invoke() example.')
++    }
++    if (/add_edge\s*\([^)]*condition\s*=/.test(normalized)) {
++        issues.push('Invalid API usage: add_edge(..., condition=...) is not supported.')
++    }
++    if (!/add_conditional_edges\s*\(/.test(normalized)) {
++        issues.push('Missing add_conditional_edges() for routing.')
++    }
++    if (!/def\s+\w+\s*\(\s*state/.test(normalized)) {
++        issues.push('Missing node function signatures that accept state.')
++    }
++
++    return {
++        passed: issues.length === 0,
++        issues
++    }
++}
++*/
++
++const sanitizePythonCode = (code: string) => {
++    if (!code) return ''
++    let cleaned = code.trim()
++    // Remove markdown code fences if present
++    cleaned = cleaned.replace(/^```(?:python|py)?\s*/i, '')
++    cleaned = cleaned.replace(/```$/i, '')
++    return cleaned.trim()
++}
++
++const generateCompletionFromMessages = async (
++    client: OpenAI,
++    model: string,
++    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
++    phase: string,
++    onLog?: (log: LangGraphLogEvent) => void,
++    onToken?: (phase: string, token: string) => void
++) => {
++    onLog?.({
++        phase,
++        type: 'request',
++        payload: {
++            model,
++            temperature: 0.2,
++            messages
++        }
++    })
++
++    const completion = await client.chat.completions.create({
++        model,
++        temperature: 0.2,
++        messages,
++        stream: true
++    })
++    let content = ''
++    for await (const chunk of completion) {
++        const token = chunk.choices?.[0]?.delta?.content || ''
++        if (!token) continue
++        content += token
++        onToken?.(phase, token)
++    }
++    onLog?.({
++        phase,
++        type: 'response',
++        payload: {
++            content
++        }
++    })
++
++    return sanitizePythonCode(content)
++}
++
++const generateLangGraphCodeStream = async (
++    flowData: Record<string, any>,
++    instruction?: string,
++    onLog?: (log: LangGraphLogEvent) => void,
++    onToken?: (phase: string, token: string) => void,
++    modelOverride?: string
++) => {
++    try {
++        const apiKey = process.env.OPENAI_API_KEY
++        if (!apiKey) {
++            throw new InternalFlowiseError(StatusCodes.BAD_REQUEST, 'OPENAI_API_KEY is not configured.')
++        }
++
++        const model =
++            typeof modelOverride === 'string' && modelOverride.trim().length > 0
++                ? modelOverride.trim()
++                : process.env.OPENAI_LANGGRAPH_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini'
++        const userPrompt = getLangGraphUserPrompt(flowData, instruction)
++        const client = new OpenAI({ apiKey })
++
++        const candidateCode = await generateCompletionFromMessages(
++            client,
++            model,
++            [
++                { role: 'system', content: langGraphSystemPrompt },
++                { role: 'user', content: userPrompt }
++            ],
++            'generation',
++            onLog,
++            onToken
++        )
++
++        const validationResult: LangGraphValidationResult = { passed: true, issues: [] }
++
++        return {
++            code: candidateCode,
++            model,
++            artifact: {
++                instruction: instruction || 'Auto-generate LangGraph code from current flow JSON',
++                flowData
++            },
++            phases: ['generation'],
++            validation: validationResult
++        }
++    } catch (error) {
++        throw new InternalFlowiseError(StatusCodes.INTERNAL_SERVER_ERROR, `Error: generateLangGraphCodeStream - ${getErrorMessage(error)}`)
++    }
++}
++
+ export default {
+-    generateAgentflowv2
++    generateAgentflowv2,
++    generateLangGraphCodeStream
+ }
+diff --git a/packages/server/src/services/agentflowv2-generator/prompt.ts b/packages/server/src/services/agentflowv2-generator/prompt.ts
+index eef732c4..9b9286f6 100644
+--- a/packages/server/src/services/agentflowv2-generator/prompt.ts
++++ b/packages/server/src/services/agentflowv2-generator/prompt.ts
+@@ -64,3 +64,397 @@ To create this workflow, follow these steps and wrap your thought process in <wo
+ After your analysis, provide the final workflow as a JSON object with "nodes" and "edges" arrays.
+ 
+ Begin your analysis and workflow creation process now. Your final output should consist only of the JSON object with the workflow and should not duplicate or rehash any of the work you did in the workflow planning section.`
++
++// export const langGraphSystemPrompt = `You are an expert in LangGraph and agent workflow conversion.
++
++// Your task is to convert a Flowise agent flow JSON into executable LangGraph Python code.
++
++// ---
++
++// ## INPUT
++
++// You will receive a JSON representing a Flowise agent workflow.
++
++// ---
++
++// ## IMPORTANT RULES
++
++// ### 1. Extract ONLY execution-relevant data
++
++// Ignore ALL UI/editor-related fields such as:
++
++// * position, positionAbsolute, width, height
++// * color, styling, display flags
++// * selected, dragging
++// * version, category, description
++// * inputParams, inputAnchors, outputAnchors (unless strictly required)
++
++// ---
++
++// ### 2. Extract ONLY these fields:
++
++// * nodes[].id
++// * nodes[].data.type
++// * nodes[].data.inputs
++// * nodes[].data.label (optional, for naming)
++// * edges (source → target relationships)
++// * edges[].data.edgeLabel (CRITICAL for conditional routing)
++
++// ---
++
++// ### 3. Node type mapping
++
++// * Start → graph entry point (may be skipped if redundant)
++// * ConditionAgent → router node (must produce a routing key)
++// * Tool → execution node (pure function over state)
++
++// ---
++
++// ### 4. Graph construction rules (STRICT)
++
++// * Use:
++
++//   \`\`\`python
++//   from langgraph.graph import StateGraph, END
++//   \`\`\`
++
++// * Always define a TypedDict state schema (e.g. FlowState)
++
++// * ALWAYS call:
++
++//   \`\`\`python
++//   builder.set_entry_point(...)
++//   \`\`\`
++
++// * ALWAYS terminate:
++
++//   \`\`\`python
++//   builder.add_edge(..., END)
++//   \`\`\`
++
++// * NEVER use:
++
++//   \`\`\`python
++//   add_edge(..., condition=...)
++//   \`\`\`
++
++//   This is INVALID.
++
++// * ALWAYS use:
++
++//   \`\`\`python
++//   add_conditional_edges(...)
++//   \`\`\`
++
++// ---
++
++// ### 5. Conditional routing (CRITICAL)
++
++// * ConditionAgent MUST:
++
++//   * return a routing field (e.g. "scenario": int)
++//   * NOT mix routing with business output
++
++// * The routing field:
++
++//   * MUST be explicitly added to the state schema
++//   * MUST be used in a routing function
++
++// Example:
++
++// \`\`\`python
++// def route_fn(state):
++//     return state["scenario"]
++// \`\`\`
++
++// * Use edges[].data.edgeLabel to map branches:
++
++//   * "0" → scenario 0
++//   * "1" → scenario 1
++
++// ---
++
++// ### 6. State design rules
++
++// * Define ALL fields used anywhere (e.g. scenario, response, clarification)
++
++// * Every node:
++
++//   * MUST read from state
++//   * MUST return partial updates (dict)
++
++// * Do NOT invent inconsistent keys
++
++// * Keep state minimal and consistent
++
++// ---
++
++// ### 7. Tool node rules
++
++// * Convert each tool into a function
++
++// * Resolve tool name in this priority:
++
++//   1. inputs.toolAgentflowSelectedToolConfig.customToolName
++//   2. inputs.toolAgentflowSelectedTool
++//   3. node label
++//   4. node id
++
++// * If no implementation exists:
++
++//   * Provide a deterministic placeholder using state
++
++// ---
++
++// ### 8. Start node handling
++
++// * If Start node does nothing meaningful → SKIP IT
++// * Otherwise:
++
++//   * Use it as entry point
++// * Never create redundant state-reset logic
++
++// ---
++
++// ### 9. Response / merge logic
++
++// * If multiple branches merge:
++
++//   * downstream node MUST handle different paths using state (e.g. scenario)
++
++// * Do NOT overwrite useful data blindly
++
++// ---
++
++// ### 10. STRICT EXECUTABILITY REQUIREMENTS (MUST PASS)
++
++// * Code MUST run without modification
++
++// * MUST include:
++
++//   * imports
++//   * TypedDict state schema
++//   * node functions
++//   * graph construction
++//   * conditional routing using add_conditional_edges
++//   * START → ... → END path
++//   * app = builder.compile()
++
++// * MUST include runnable example:
++
++// \`\`\`python
++// result = app.invoke({"question": "example input"})
++// print(result)
++// \`\`\`
++
++// ---
++
++// ### 11. DO NOT
++
++// * Do NOT use invalid LangGraph APIs
++// * Do NOT omit entry point
++// * Do NOT omit END
++// * Do NOT mix routing logic with output fields
++// * Do NOT generate unused nodes
++// * Do NOT include explanations
++// * Do NOT output pseudo-code
++
++// ---
++
++// ## OUTPUT FORMAT
++
++// Return ONLY Python code.
++
++// ---
++
++// ## INPUT JSON:`
++
++export const langGraphSystemPrompt = `You are an expert in LangGraph and agent workflow conversion.
++
++Your task is to convert a Flowise agent flow JSON into executable LangGraph Python code.
++
++## INPUT
++
++You will receive a JSON representing a Flowise agent workflow.
++
++---
++
++## OUTPUT FORMAT
++
++Return ONLY Python code.
++
++---
++
++## INPUT JSON:`
++
++// export const langGraphValidatorSystemPrompt = `You are a STRICT LangGraph code validator and repairer.
++
++// Your job is to validate and, if necessary, repair LangGraph Python code so that it is fully executable and consistent with the intended Flowise workflow.
++
++// ---
++
++// ## BEHAVIOR
++
++// * If the code is already correct -> return it EXACTLY unchanged.
++// * If ANY issue exists -> return FULLY REPAIRED executable Python code.
++// * Return ONLY Python code. No explanations. No markdown.
++
++// ---
++
++// ## MANDATORY VALIDATION CHECKS (ALL must pass)
++
++// ### 1. Graph Initialization
++
++// * MUST use:
++//   from langgraph.graph import StateGraph, END
++// * MUST initialize with state:
++//   builder = StateGraph(FlowState)
++
++// ---
++
++// ### 2. State Schema
++
++// * MUST define a TypedDict (e.g. FlowState)
++// * MUST include ALL fields used anywhere in code
++//   (e.g. question, scenario, response, clarification)
++// * Routing keys (e.g. scenario) MUST exist in state
++
++// ---
++
++// ### 3. Node Definitions
++
++// * Every node referenced in edges MUST be added using:
++//   builder.add_node(name, function)
++
++// * Node names MUST match those used in edges
++
++// * Every node function:
++
++//   * MUST accept \`state\`
++//   * MUST return dict (partial state update)
++
++// ---
++
++// ### 4. Entry Point
++
++// * MUST define:
++//   builder.set_entry_point(node_name)
++
++// * Entry node MUST exist
++
++// * If Start node is invalid or missing -> use first logical node (e.g. condition node)
++
++// ---
++
++// ### 5. Condition / Routing Node
++
++// * MUST exist if conditional edges are used
++
++// * MUST set routing field (e.g. "scenario")
++
++// * MUST NOT mix routing with unrelated outputs
++
++// ---
++
++// ### 6. Conditional Edges (CRITICAL)
++
++// * MUST use:
++//   builder.add_conditional_edges(...)
++
++// * MUST NOT use:
++//   add_edge(..., condition=...)  <- INVALID
++
++// * Routing function MUST return same type as mapping keys
++
++// * Mapping keys MUST match routing output type:
++
++//   * if route_fn returns int -> keys must be int (NOT strings)
++
++// ---
++
++// ### 7. Edge Integrity
++
++// * ALL referenced nodes MUST exist
++
++// * Graph MUST have a valid path:
++//   entry -> ... -> END
++
++// * MUST include:
++//   builder.add_edge(..., END)
++
++// ---
++
++// ### 8. State Safety
++
++// * Routing field (e.g. scenario) MUST always be set before routing
++
++// * No undefined state keys should be accessed
++
++// ---
++
++// ### 9. Tool Nodes
++
++// * MUST be implemented as functions
++// * MUST return deterministic placeholder if real logic missing
++// * MUST read/write valid state fields
++
++// ---
++
++// ### 10. Final Executability
++
++// * MUST include:
++//   app = builder.compile()
++
++// * MUST include runnable example:
++//   result = app.invoke({...})
++//   print(result)
++
++// * Code MUST run without modification
++
++// ---
++
++// ## REPAIR RULES
++
++// If ANY validation fails:
++
++// * Fix ALL issues (not partial fixes)
++// * Add missing nodes, state fields, routing logic
++// * Replace invalid APIs with correct ones
++// * Fix type mismatches (e.g. "0" -> 0)
++// * Ensure full execution path exists
++
++// ---
++
++// ## OUTPUT
++
++// Return ONLY final Python code.
++
++// ---
++
++// ## INPUT CODE:
++
++// <PASTE GENERATED CODE HERE>`
++
++export const langGraphValidatorSystemPrompt = `You are a STRICT LangGraph code validator and repairer.
++
++Your job is to validate and, if necessary, repair LangGraph Python code so that it is fully executable and consistent with the intended Flowise workflow.
++
++---
++
++## BEHAVIOR
++
++* If the code is already correct -> return it EXACTLY unchanged.
++* If ANY issue exists -> return FULLY REPAIRED executable Python code.
++* Return ONLY Python code. No explanations. No markdown.
++
++---
++
++## OUTPUT
++
++Return ONLY final Python code.
++
++---
++
++## INPUT CODE:
++
++<PASTE GENERATED CODE HERE>`
+diff --git a/packages/ui/src/api/chatflows.js b/packages/ui/src/api/chatflows.js
+index a5d4f323..84771c35 100644
+--- a/packages/ui/src/api/chatflows.js
++++ b/packages/ui/src/api/chatflows.js
+@@ -22,6 +22,8 @@ const getHasChatflowChanged = (id, lastUpdatedDateTime) => client.get(`/chatflow
+ 
+ const generateAgentflow = (body) => client.post(`/agentflowv2-generator/generate`, body)
+ 
++const getLangGraphOpenAIModels = () => client.get('/agentflowv2-generator/openai-chat-models')
++
+ export default {
+     getAllChatflows,
+     getAllAgentflows,
+@@ -33,5 +35,6 @@ export default {
+     getIsChatflowStreaming,
+     getAllowChatflowUploads,
+     getHasChatflowChanged,
+-    generateAgentflow
++    generateAgentflow,
++    getLangGraphOpenAIModels
+ }
+diff --git a/packages/ui/src/menu-items/agentsettings.js b/packages/ui/src/menu-items/agentsettings.js
+index 4962c021..7e7eb8da 100644
+--- a/packages/ui/src/menu-items/agentsettings.js
++++ b/packages/ui/src/menu-items/agentsettings.js
+@@ -31,28 +31,28 @@ const agent_settings = {
+     title: '',
+     type: 'group',
+     children: [
+-        // {
+-        //     id: 'viewMessages',
+-        //     title: 'View Messages',
+-        //     type: 'item',
+-        //     url: '',
+-        //     icon: icons.IconMessage
+-        // },
+-        // {
+-        //     id: 'viewLeads',
+-        //     title: 'View Leads',
+-        //     type: 'item',
+-        //     url: '',
+-        //     icon: icons.IconUsers
+-        // },
+-        // {
+-        //     id: 'chatflowConfiguration',
+-        //     title: 'Configuration',
+-        //     type: 'item',
+-        //     url: '',
+-        //     icon: icons.IconAdjustmentsHorizontal,
+-        //     permission: 'agentflows:config'
+-        // },
++        {
++            id: 'viewMessages',
++            title: 'View Messages',
++            type: 'item',
++            url: '',
++            icon: icons.IconMessage
++        },
++        {
++            id: 'viewLeads',
++            title: 'View Leads',
++            type: 'item',
++            url: '',
++            icon: icons.IconUsers
++        },
++        {
++            id: 'chatflowConfiguration',
++            title: 'Configuration',
++            type: 'item',
++            url: '',
++            icon: icons.IconAdjustmentsHorizontal,
++            permission: 'agentflows:config'
++        },
+         {
+             id: 'saveAsTemplate',
+             title: 'Save As Template',
+diff --git a/packages/ui/src/views/agentflowsv2/Canvas.jsx b/packages/ui/src/views/agentflowsv2/Canvas.jsx
+index 6c1d835e..07bf57df 100644
+--- a/packages/ui/src/views/agentflowsv2/Canvas.jsx
++++ b/packages/ui/src/views/agentflowsv2/Canvas.jsx
+@@ -776,7 +776,7 @@ const AgentflowCanvas = () => {
+                                     dialogProps={editNodeDialogProps}
+                                     onCancel={() => setEditNodeDialogOpen(false)}
+                                 />
+-                                {/* {isSyncNodesButtonEnabled && (
++                                {isSyncNodesButtonEnabled && (
+                                     <Fab
+                                         sx={{
+                                             left: 60,
+@@ -795,9 +795,9 @@ const AgentflowCanvas = () => {
+                                     >
+                                         <IconRefreshAlert />
+                                     </Fab>
+-                                )} */}
+-                                {/* <ChatPopUp isAgentCanvas={true} chatflowid={chatflowId} onOpenChange={setChatPopupOpen} />
+-                                {!chatPopupOpen && <ValidationPopUp isAgentCanvas={true} chatflowid={chatflowId} />} */}
++                                )}
++                                <ChatPopUp isAgentCanvas={true} chatflowid={chatflowId} onOpenChange={setChatPopupOpen} />
++                                {!chatPopupOpen && <ValidationPopUp isAgentCanvas={true} chatflowid={chatflowId} />}
+                             </ReactFlow>
+                         </div>
+                     </div>
+diff --git a/packages/ui/src/views/canvas/CanvasHeader.jsx b/packages/ui/src/views/canvas/CanvasHeader.jsx
+index 206f0cf1..d621ea6a 100644
+--- a/packages/ui/src/views/canvas/CanvasHeader.jsx
++++ b/packages/ui/src/views/canvas/CanvasHeader.jsx
+@@ -13,7 +13,7 @@ import { IconSettings, IconChevronLeft, IconDeviceFloppy, IconPencil, IconCheck,
+ // project imports
+ import Settings from '@/views/settings'
+ import SaveChatflowDialog from '@/ui-component/dialog/SaveChatflowDialog'
+-import APICodeDialog from '@/views/chatflows/APICodeDialog'
++import LangGraphWorkbenchDialog from '@/views/chatflows/LangGraphWorkbenchDialog'
+ import ViewMessagesDialog from '@/ui-component/dialog/ViewMessagesDialog'
+ import ChatflowConfigurationDialog from '@/ui-component/dialog/ChatflowConfigurationDialog'
+ import UpsertHistoryDialog from '@/views/vectorstore/UpsertHistoryDialog'
+@@ -45,8 +45,7 @@ const CanvasHeader = ({ chatflow, isAgentCanvas, isAgentflowV2, handleSaveFlow,
+     const [flowName, setFlowName] = useState('')
+     const [isSettingsOpen, setSettingsOpen] = useState(false)
+     const [flowDialogOpen, setFlowDialogOpen] = useState(false)
+-    const [apiDialogOpen, setAPIDialogOpen] = useState(false)
+-    const [apiDialogProps, setAPIDialogProps] = useState({})
++    const [langGraphWorkbenchOpen, setLangGraphWorkbenchOpen] = useState(false)
+     const [viewMessagesDialogOpen, setViewMessagesDialogOpen] = useState(false)
+     const [viewMessagesDialogProps, setViewMessagesDialogProps] = useState({})
+     const [viewLeadsDialogOpen, setViewLeadsDialogOpen] = useState(false)
+@@ -171,46 +170,7 @@ const CanvasHeader = ({ chatflow, isAgentCanvas, isAgentflowV2, handleSaveFlow,
+     }
+ 
+     const onAPIDialogClick = () => {
+-        // If file type is file, isFormDataRequired = true
+-        let isFormDataRequired = false
+-        try {
+-            const flowData = JSON.parse(chatflow.flowData)
+-            const nodes = flowData.nodes
+-            for (const node of nodes) {
+-                if (node.data.inputParams.find((param) => param.type === 'file')) {
+-                    isFormDataRequired = true
+-                    break
+-                }
+-            }
+-        } catch (e) {
+-            console.error(e)
+-        }
+-
+-        // If sessionId memory, isSessionMemory = true
+-        let isSessionMemory = false
+-        try {
+-            const flowData = JSON.parse(chatflow.flowData)
+-            const nodes = flowData.nodes
+-            for (const node of nodes) {
+-                if (node.data.inputParams.find((param) => param.name === 'sessionId')) {
+-                    isSessionMemory = true
+-                    break
+-                }
+-            }
+-        } catch (e) {
+-            console.error(e)
+-        }
+-
+-        setAPIDialogProps({
+-            title: 'Generated Code', //'Embed in website or use as API',
+-            chatflowid: chatflow.id,
+-            chatflowApiKeyId: chatflow.apikeyid,
+-            isFormDataRequired,
+-            isSessionMemory,
+-            isAgentCanvas,
+-            isAgentflowV2
+-        })
+-        setAPIDialogOpen(true)
++        setLangGraphWorkbenchOpen(true)
+     }
+ 
+     const onSaveChatflowClick = () => {
+@@ -472,7 +432,7 @@ const CanvasHeader = ({ chatflow, isAgentCanvas, isAgentflowV2, handleSaveFlow,
+                 onCancel={() => setFlowDialogOpen(false)}
+                 onConfirm={onConfirmSaveName}
+             />
+-            {apiDialogOpen && <APICodeDialog show={apiDialogOpen} dialogProps={apiDialogProps} onCancel={() => setAPIDialogOpen(false)} />}
++            <LangGraphWorkbenchDialog open={langGraphWorkbenchOpen} chatflow={chatflow} onClose={() => setLangGraphWorkbenchOpen(false)} />
+             <ViewMessagesDialog
+                 show={viewMessagesDialogOpen}
+                 dialogProps={viewMessagesDialogProps}
+diff --git a/packages/ui/src/views/chatflows/APICodeDialog.jsx b/packages/ui/src/views/chatflows/APICodeDialog.jsx
+index d2d4ebf3..c4477c3f 100644
+--- a/packages/ui/src/views/chatflows/APICodeDialog.jsx
++++ b/packages/ui/src/views/chatflows/APICodeDialog.jsx
+@@ -28,6 +28,7 @@ import { useAuth } from '@/hooks/useAuth'
+ import { Dropdown } from '@/ui-component/dropdown/Dropdown'
+ import ShareChatbot from './ShareChatbot'
+ import EmbedChat from './EmbedChat'
++import LangGraphWorkbenchDialog from './LangGraphWorkbenchDialog'
+ import { Available } from '@/ui-component/rbac/available'
+ 
+ // Const
+@@ -101,6 +102,7 @@ const APICodeDialog = ({ show, dialogProps, onCancel }) => {
+     const [selectedApiKey, setSelectedApiKey] = useState({})
+     const [selectedEnvironment, setSelectedEnvironment] = useState('dev')
+     const [checkboxVal, setCheckbox] = useState(false)
++    const [langGraphWorkbenchOpen, setLangGraphWorkbenchOpen] = useState(false)
+     const [nodeConfig, setNodeConfig] = useState({})
+     const [nodeConfigExpanded, setNodeConfigExpanded] = useState({})
+     const [nodeOverrides, setNodeOverrides] = useState(apiConfig?.overrideConfig?.nodes ?? null)
+@@ -1184,9 +1186,21 @@ if __name__ == "__main__":
+                             <ShareChatbot isSessionMemory={dialogProps.isSessionMemory} isAgentCanvas={dialogProps.isAgentCanvas} />
+                         )} */}
+                         {codeLang === 'LangGraph' && !chatflowApiKeyId && (
+-                            <Box sx={{ maxHeight: '55vh', overflow: 'auto', border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
+-                                <CopyBlock theme={atomOneDark} text={getLanggraphCode()} language='javascript' showLineNumbers={false} wrapLines />
+-                            </Box>
++                            <>
++                                <Stack direction='row' spacing={1} sx={{ mb: 1 }}>
++                                    <Button variant='contained' color='secondary' onClick={() => setLangGraphWorkbenchOpen(true)}>
++                                        Generate LangGraph Code
++                                    </Button>
++                                </Stack>
++                                <Box sx={{ maxHeight: '55vh', overflow: 'auto', border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
++                                    <CopyBlock theme={atomOneDark} text={getLanggraphCode()} language='javascript' showLineNumbers={false} wrapLines />
++                                </Box>
++                                <LangGraphWorkbenchDialog
++                                    open={langGraphWorkbenchOpen}
++                                    initialCode={getLanggraphCode()}
++                                    onClose={() => setLangGraphWorkbenchOpen(false)}
++                                />
++                            </>
+                         )}
+                         {codeLang === 'MS Framework (Semantic Kernel)' && !chatflowApiKeyId && (
+                             <Box sx={{ maxHeight: '60vh', overflow: 'auto', border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
+diff --git a/packages/ui/src/views/chatflows/LangGraphWorkbenchDialog.jsx b/packages/ui/src/views/chatflows/LangGraphWorkbenchDialog.jsx
+new file mode 100644
+index 00000000..d3e53d80
+--- /dev/null
++++ b/packages/ui/src/views/chatflows/LangGraphWorkbenchDialog.jsx
+@@ -0,0 +1,488 @@
++import { useCallback, useEffect, useRef, useState } from 'react'
++import PropTypes from 'prop-types'
++import {
++    Alert,
++    Box,
++    Button,
++    Dialog,
++    DialogContent,
++    DialogTitle,
++    FormControl,
++    IconButton,
++    InputLabel,
++    MenuItem,
++    Paper,
++    Select,
++    Stack,
++    TextField,
++    Tooltip,
++    Typography
++} from '@mui/material'
++import { useTheme } from '@mui/material/styles'
++import ContentCopyIcon from '@mui/icons-material/ContentCopy'
++import CodeMirror from '@uiw/react-codemirror'
++import { EditorView } from '@codemirror/view'
++import { vscodeDark } from '@uiw/codemirror-theme-vscode'
++import { sublime } from '@uiw/codemirror-theme-sublime'
++import chatflowsApi from '@/api/chatflows'
++
++const DEFAULT_MODEL = 'gpt-4o-mini'
++
++const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
++    const theme = useTheme()
++    const isDarkMode = theme.palette.mode === 'dark'
++    const [chatMessages, setChatMessages] = useState([])
++    const [chatInput, setChatInput] = useState('')
++    const [editorCode, setEditorCode] = useState('')
++    const [isGenerating, setIsGenerating] = useState(false)
++    const [generationError, setGenerationError] = useState('')
++    const hasAutoSentRef = useRef(false)
++    const abortControllerRef = useRef(null)
++    const [expandedEntries, setExpandedEntries] = useState({})
++    const [modelOptions, setModelOptions] = useState([])
++    const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL)
++    const chatScrollRef = useRef(null)
++    const currentTokenPhaseRef = useRef('')
++
++    const parseSSEEvent = (eventBlock) => {
++        const lines = eventBlock.split('\n')
++        const event = {}
++
++        for (const line of lines) {
++            if (line.startsWith('event:')) {
++                event.event = line.substring(6).trim()
++            } else if (line.startsWith('data:')) {
++                const dataStr = line.substring(5).trim()
++                try {
++                    const parsed = JSON.parse(dataStr)
++                    event.data = parsed?.data
++                } catch (e) {
++                    console.error('Failed to parse stream event:', e)
++                }
++            }
++        }
++
++        return event
++    }
++
++    const appendMessage = useCallback((msg) => {
++        setChatMessages((prev) => [...prev, msg])
++    }, [])
++
++    useEffect(() => {
++        if (chatScrollRef.current) {
++            chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight
++        }
++    }, [chatMessages, generationError, isGenerating])
++
++    const getArtifactPreview = (content) => {
++        if (!content) return ''
++        const lines = content.split('\n')
++        if (lines.length <= 4) return content
++        return `${lines.slice(0, 4).join('\n')}\n...`
++    }
++
++    const formatLogContent = (data) => {
++        try {
++            return JSON.stringify(data, null, 2)
++        } catch (e) {
++            return String(data)
++        }
++    }
++
++    const effectiveModelOptions =
++        modelOptions.length > 0 ? modelOptions : [{ label: `${DEFAULT_MODEL} (loading list…)`, name: DEFAULT_MODEL }]
++
++    const copyToClipboard = async (text) => {
++        try {
++            await navigator.clipboard.writeText(text || '')
++        } catch (e) {
++            console.error('Failed to copy log content:', e)
++        }
++    }
++
++    useEffect(() => {
++        if (!open) return undefined
++        let cancelled = false
++        ;(async () => {
++            try {
++                const res = await chatflowsApi.getLangGraphOpenAIModels()
++                const models = res?.data?.models
++                if (cancelled || !Array.isArray(models) || models.length === 0) return
++                setModelOptions(models)
++                setSelectedModel((prev) => {
++                    if (models.some((m) => m.name === prev)) return prev
++                    const fallback = models.find((m) => m.name === DEFAULT_MODEL)?.name || models[0].name
++                    return fallback
++                })
++            } catch (e) {
++                console.error('Failed to load OpenAI models for LangGraph workbench:', e)
++                if (!cancelled) {
++                    setModelOptions([{ label: DEFAULT_MODEL, name: DEFAULT_MODEL }])
++                    setSelectedModel(DEFAULT_MODEL)
++                }
++            }
++        })()
++        return () => {
++            cancelled = true
++        }
++    }, [open])
++
++    const streamLangGraphCode = useCallback(
++        async (instruction) => {
++            let flowData = {}
++            try {
++                flowData = chatflow?.flowData ? JSON.parse(chatflow.flowData) : {}
++            } catch (e) {
++                setGenerationError('Invalid flow JSON. Please save and try again.')
++                return
++            }
++
++            const effectiveInstruction = instruction?.trim() || 'Generate LangGraph code from current flow JSON'
++            const artifactPayload = JSON.stringify(
++                {
++                    instruction: effectiveInstruction,
++                    flowData
++                },
++                null,
++                2
++            )
++
++            appendMessage({
++                role: 'artifact',
++                title: 'Auto Prompt Artifact',
++                content: artifactPayload
++            })
++
++            setEditorCode('')
++            setGenerationError('')
++            setIsGenerating(true)
++            currentTokenPhaseRef.current = ''
++
++            const abortController = new AbortController()
++            abortControllerRef.current = abortController
++
++            try {
++                const response = await fetch('/api/v1/agentflowv2-generator/langgraph-code/stream', {
++                    method: 'POST',
++                    headers: {
++                        'Content-Type': 'application/json',
++                        'x-request-from': 'internal'
++                    },
++                    credentials: 'include',
++                    signal: abortController.signal,
++                    body: JSON.stringify({
++                        flowData,
++                        instruction: effectiveInstruction,
++                        model: selectedModel
++                    })
++                })
++
++                if (!response.ok) {
++                    throw new Error(`Generation request failed with status ${response.status}`)
++                }
++                if (!response.body) {
++                    throw new Error('Streaming response body is not available.')
++                }
++
++                const reader = response.body.getReader()
++                const decoder = new TextDecoder()
++                let buffer = ''
++                let done = false
++
++                while (!done) {
++                    const result = await reader.read()
++                    done = result.done
++                    if (done) break
++
++                    buffer += decoder.decode(result.value, { stream: true })
++                    const blocks = buffer.split('\n\n')
++                    buffer = blocks.pop() || ''
++
++                    for (const block of blocks) {
++                        if (!block.trim()) continue
++                        const event = parseSSEEvent(block)
++                        switch (event.event) {
++                            case 'start':
++                                appendMessage({
++                                    role: 'assistant',
++                                    content: `Generating with model: ${event.data?.model || 'openai'}`
++                                })
++                                break
++                            case 'token':
++                                if (typeof event.data?.token === 'string') {
++                                    const tokenPhase = event.data?.phase || 'generation'
++                                    if (currentTokenPhaseRef.current !== tokenPhase) {
++                                        currentTokenPhaseRef.current = tokenPhase
++                                        setEditorCode('')
++                                        appendMessage({
++                                            role: 'assistant',
++                                            content: `Streaming code for phase: ${tokenPhase}`
++                                        })
++                                    }
++                                    setEditorCode((prev) => prev + event.data.token)
++                                }
++                                break
++                            case 'end':
++                                appendMessage({
++                                    role: 'assistant',
++                                    content: 'Generation complete.'
++                                })
++                                break
++                            case 'log':
++                                appendMessage({
++                                    role: 'log',
++                                    title: `Log: ${event.data?.phase || 'unknown'} / ${event.data?.type || 'event'}`,
++                                    content: formatLogContent(event.data?.payload ?? event.data)
++                                })
++                                break
++                            case 'error':
++                                setGenerationError(typeof event.data === 'string' ? event.data : 'Generation failed.')
++                                appendMessage({
++                                    role: 'assistant',
++                                    content: `Error: ${typeof event.data === 'string' ? event.data : 'Generation failed.'}`
++                                })
++                                break
++                            default:
++                                break
++                        }
++                    }
++                }
++            } catch (error) {
++                if (error.name !== 'AbortError') {
++                    const msg = error.message || 'Generation failed.'
++                    setGenerationError(msg)
++                    appendMessage({ role: 'assistant', content: `Error: ${msg}` })
++                }
++            } finally {
++                setIsGenerating(false)
++            }
++        },
++        [appendMessage, chatflow?.flowData, selectedModel]
++    )
++
++    useEffect(() => {
++        if (open && !hasAutoSentRef.current) {
++            hasAutoSentRef.current = true
++            setChatMessages([])
++            setChatInput('')
++            setEditorCode('')
++            setGenerationError('')
++            setExpandedEntries({})
++            appendMessage({
++                role: 'assistant',
++                content: 'Workbench opened. Auto-sending flow JSON to generate LangGraph code.'
++            })
++            streamLangGraphCode('')
++        }
++        if (!open) {
++            hasAutoSentRef.current = false
++            if (abortControllerRef.current) {
++                abortControllerRef.current.abort()
++            }
++        }
++    }, [appendMessage, open, streamLangGraphCode])
++
++    const handleSend = async () => {
++        if (!chatInput.trim() || isGenerating) return
++        const userInstruction = chatInput.trim()
++        appendMessage({ role: 'user', content: userInstruction })
++        setChatInput('')
++        await streamLangGraphCode(userInstruction)
++    }
++
++    const handleRegenerate = async () => {
++        if (isGenerating) return
++        await streamLangGraphCode('')
++    }
++
++    const handleRunPython = () => {
++        appendMessage({
++            role: 'assistant',
++            content: 'Run Python is coming next. Backend execution API is not wired yet.'
++        })
++    }
++
++    return (
++        <Dialog open={open} onClose={onClose} fullWidth maxWidth='xl'>
++            <DialogTitle>LangGraph Workbench</DialogTitle>
++            <DialogContent sx={{ px: 2, pb: 2 }}>
++                <Stack direction='row' spacing={2} sx={{ height: '75vh', minHeight: 560 }}>
++                    <Paper variant='outlined' sx={{ flex: 1, p: 2, display: 'flex', flexDirection: 'column', minWidth: 320 }}>
++                        <Typography variant='h4' sx={{ mb: 1 }}>
++                            Chat
++                        </Typography>
++                        <Typography variant='caption' color='text.secondary' sx={{ mb: 2 }}>
++                            Chat instructions will regenerate code using OpenAI and stream it into the editor.
++                        </Typography>
++                        <Box
++                            ref={chatScrollRef}
++                            sx={{
++                                flex: 1,
++                                border: `1px solid ${theme.palette.divider}`,
++                                borderRadius: 1,
++                                p: 1.5,
++                                overflowY: 'auto',
++                                backgroundColor: theme.palette.background.default
++                            }}
++                        >
++                            {chatMessages.map((msg, index) => (
++                                <Box
++                                    key={`${msg.role}-${index}`}
++                                    sx={{
++                                        mb: 1.5,
++                                        display: 'flex',
++                                        justifyContent: msg.role === 'artifact' || msg.role === 'user' ? 'flex-end' : 'flex-start'
++                                    }}
++                                >
++                                    <Box
++                                        sx={{
++                                            maxWidth: '92%',
++                                            borderRadius: 1,
++                                            p: 1,
++                                            backgroundColor:
++                                                msg.role === 'artifact'
++                                                    ? theme.palette.primary.light
++                                                    : msg.role === 'log'
++                                                      ? theme.palette.mode === 'dark'
++                                                          ? theme.palette.grey[900]
++                                                          : theme.palette.grey[100]
++                                                    : msg.role === 'assistant'
++                                                      ? theme.palette.background.paper
++                                                      : theme.palette.secondary.light
++                                        }}
++                                    >
++                                        <Stack direction='row' justifyContent='space-between' alignItems='center'>
++                                            <Typography variant='caption' color='text.secondary' sx={{ textTransform: 'uppercase' }}>
++                                                {msg.title || msg.role}
++                                            </Typography>
++                                            {msg.role === 'log' && (
++                                                <Tooltip title='Copy log'>
++                                                    <IconButton size='small' onClick={() => copyToClipboard(msg.content)}>
++                                                        <ContentCopyIcon fontSize='inherit' />
++                                                    </IconButton>
++                                                </Tooltip>
++                                            )}
++                                        </Stack>
++                                        <Typography
++                                            variant='body2'
++                                            sx={{
++                                                whiteSpace: msg.role === 'artifact' || msg.role === 'log' ? 'pre-wrap' : 'normal',
++                                                fontFamily:
++                                                    msg.role === 'artifact' || msg.role === 'log'
++                                                        ? 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace'
++                                                        : 'inherit',
++                                                fontSize: msg.role === 'artifact' || msg.role === 'log' ? 12 : 14
++                                            }}
++                                        >
++                                            {msg.role === 'artifact' || msg.role === 'log'
++                                                ? expandedEntries[index]
++                                                    ? msg.content
++                                                    : getArtifactPreview(msg.content)
++                                                : msg.content}
++                                        </Typography>
++                                        {(msg.role === 'artifact' || msg.role === 'log') && (
++                                            <Button
++                                                size='small'
++                                                sx={{ mt: 0.5, px: 0, minWidth: 0, textTransform: 'none' }}
++                                                onClick={() =>
++                                                    setExpandedEntries((prev) => ({
++                                                        ...prev,
++                                                        [index]: !prev[index]
++                                                    }))
++                                                }
++                                            >
++                                                {expandedEntries[index]
++                                                    ? 'Show less'
++                                                    : msg.role === 'artifact'
++                                                      ? 'Show full artifact'
++                                                      : 'Show full log'}
++                                            </Button>
++                                        )}
++                                    </Box>
++                                </Box>
++                            ))}
++                        </Box>
++                        <Stack direction='row' spacing={1} sx={{ mt: 1.5 }}>
++                            <TextField
++                                fullWidth
++                                size='small'
++                                placeholder='Ask to modify code...'
++                                value={chatInput}
++                                onChange={(e) => setChatInput(e.target.value)}
++                                onKeyDown={(e) => {
++                                    if (e.key === 'Enter') {
++                                        e.preventDefault()
++                                        handleSend()
++                                    }
++                                }}
++                            />
++                            <Button variant='contained' onClick={handleSend} disabled={!chatInput.trim() || isGenerating}>
++                                Send
++                            </Button>
++                        </Stack>
++                    </Paper>
++
++                    <Paper variant='outlined' sx={{ flex: 1.6, p: 2, display: 'flex', flexDirection: 'column', minWidth: 420 }}>
++                        <Stack direction='row' justifyContent='space-between' alignItems='center' sx={{ mb: 1 }} flexWrap='wrap' gap={1}>
++                            <Typography variant='h4'>Code Editor</Typography>
++                            <Stack direction='row' spacing={1} alignItems='center' flexWrap='wrap'>
++                                <FormControl size='small' sx={{ minWidth: 220 }} disabled={isGenerating}>
++                                    <InputLabel id='langgraph-model-select-label'>Model</InputLabel>
++                                    <Select
++                                        labelId='langgraph-model-select-label'
++                                        id='langgraph-model-select'
++                                        value={
++                                            effectiveModelOptions.some((m) => m.name === selectedModel)
++                                                ? selectedModel
++                                                : effectiveModelOptions[0].name
++                                        }
++                                        label='Model'
++                                        onChange={(e) => setSelectedModel(e.target.value)}
++                                    >
++                                        {effectiveModelOptions.map((m) => (
++                                            <MenuItem key={m.name} value={m.name}>
++                                                {m.label || m.name}
++                                            </MenuItem>
++                                        ))}
++                                    </Select>
++                                </FormControl>
++                                <Button variant='outlined' size='small' onClick={handleRegenerate} disabled={isGenerating}>
++                                    {isGenerating ? 'Generating...' : 'Regenerate'}
++                                </Button>
++                                <Button variant='contained' color='secondary' size='small' onClick={handleRunPython}>
++                                    Run Python
++                                </Button>
++                            </Stack>
++                        </Stack>
++                        {generationError && (
++                            <Alert severity='error' sx={{ mb: 1 }}>
++                                {generationError}
++                            </Alert>
++                        )}
++                        <CodeMirror
++                            value={editorCode}
++                            height='430px'
++                            theme={isDarkMode ? vscodeDark : sublime}
++                            onChange={(value) => setEditorCode(value)}
++                            extensions={[EditorView.lineWrapping]}
++                            basicSetup={{
++                                lineNumbers: true,
++                                foldGutter: true,
++                                highlightActiveLine: true
++                            }}
++                        />
++                    </Paper>
++                </Stack>
++            </DialogContent>
++        </Dialog>
++    )
++}
++
++LangGraphWorkbenchDialog.propTypes = {
++    open: PropTypes.bool,
++    chatflow: PropTypes.object,
++    onClose: PropTypes.func
++}
++
++export default LangGraphWorkbenchDialog
+diff --git a/packages/ui/src/views/chatmessage/ChatMessage.jsx b/packages/ui/src/views/chatmessage/ChatMessage.jsx
+index 08ca5f27..14edb6fe 100644
+--- a/packages/ui/src/views/chatmessage/ChatMessage.jsx
++++ b/packages/ui/src/views/chatmessage/ChatMessage.jsx
+@@ -1060,6 +1060,7 @@ const ChatMessage = ({ open, chatflowid, isAgentCanvas, isDialog, previews, setP
+         await fetchEventSource(`${baseURL}/api/v1/internal-prediction/${chatflowid}`, {
+             openWhenHidden: true,
+             method: 'POST',
++            credentials: 'include',
+             body: JSON.stringify(params),
+             headers: {
+                 'Content-Type': 'application/json',
+-- 
+2.45.1
+
