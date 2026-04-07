@@ -1,0 +1,252 @@
+From 747060e5da64835c5b3190492a57056d8dba212d Mon Sep 17 00:00:00 2001
+From: Shishir Umrao <shishirumrao.knp@gmail.com>
+Date: Tue, 7 Apr 2026 19:55:08 +0530
+Subject: [PATCH] use stored cred for lg code generation
+
+---
+ .../agentflowv2-generator/index.ts            | 11 ++-
+ .../services/agentflowv2-generator/index.ts   | 72 +++++++++++++++++--
+ .../chatflows/LangGraphWorkbenchDialog.jsx    | 32 +++++++--
+ 3 files changed, 102 insertions(+), 13 deletions(-)
+
+diff --git a/packages/server/src/controllers/agentflowv2-generator/index.ts b/packages/server/src/controllers/agentflowv2-generator/index.ts
+index d28b9994..945d48ff 100644
+--- a/packages/server/src/controllers/agentflowv2-generator/index.ts
++++ b/packages/server/src/controllers/agentflowv2-generator/index.ts
+@@ -24,7 +24,7 @@ const listOpenAIChatModels = async (_req: Request, res: Response, next: NextFunc
+ 
+ const generateLangGraphCodeStream = async (req: Request, res: Response) => {
+     try {
+-        const { flowData, instruction, model: requestedModel } = req.body || {}
++        const { flowData, instruction, model: requestedModel, credentialId } = req.body || {}
+         if (!flowData || typeof flowData !== 'object') {
+             throw new Error('flowData is required')
+         }
+@@ -46,7 +46,8 @@ const generateLangGraphCodeStream = async (req: Request, res: Response) => {
+             payload: {
+                 flowData,
+                 instruction: instruction || 'Auto-generate LangGraph code from current flow JSON',
+-                requestedModel: typeof requestedModel === 'string' ? requestedModel : undefined
++                requestedModel: typeof requestedModel === 'string' ? requestedModel : undefined,
++                credentialId: typeof credentialId === 'string' ? credentialId : undefined
+             }
+         })
+ 
+@@ -59,7 +60,11 @@ const generateLangGraphCodeStream = async (req: Request, res: Response) => {
+             (phase, token) => {
+                 writeSSE('token', { phase, token })
+             },
+-            typeof requestedModel === 'string' ? requestedModel : undefined
++            typeof requestedModel === 'string' ? requestedModel : undefined,
++            {
++                credentialId: typeof credentialId === 'string' ? credentialId : undefined,
++                workspaceId: req.user?.activeWorkspaceId
++            }
+         )
+ 
+         const startResponse = {
+diff --git a/packages/server/src/services/agentflowv2-generator/index.ts b/packages/server/src/services/agentflowv2-generator/index.ts
+index 82effa6c..492eb5be 100644
+--- a/packages/server/src/services/agentflowv2-generator/index.ts
++++ b/packages/server/src/services/agentflowv2-generator/index.ts
+@@ -8,9 +8,13 @@ import { generateAgentflowv2 as generateAgentflowv2_json } from 'flowise-compone
+ import { z } from 'zod'
+ import { sysPrompt, langGraphSystemPrompt } from './prompt'
+ import { databaseEntities } from '../../utils'
++import { decryptCredentialData } from '../../utils'
+ import logger from '../../utils/logger'
+ import { MODE } from '../../Interface'
+ import OpenAI from 'openai'
++import { Credential } from '../../database/entities/Credential'
++
++const REDACTED_CREDENTIAL_VALUE_PREFIX = '_FLOWISE_BLANK_'
+ 
+ /** OpenAI chat model ids from flowise-components `models.json` (ChatOpenAI node list). */
+ export const getOpenAIChatModelsForLangGraph = (): { label: string; name: string }[] => {
+@@ -22,9 +26,9 @@ export const getOpenAIChatModelsForLangGraph = (): { label: string; name: string
+         const parsed = JSON.parse(raw) as { chat?: Array<{ name: string; models: { label: string; name: string }[] }> }
+         const openai = parsed.chat?.find((p) => p.name === 'chatOpenAI')
+         const models = openai?.models?.map((m) => ({ label: m.label, name: m.name })) ?? []
+-        return models.length ? models : [{ label: 'gpt-4o-mini', name: 'gpt-4o-mini' }]
++        return models.length ? models : [{ label: 'gpt-5.1', name: 'gpt-5.1' }]
+     } catch {
+-        return [{ label: 'gpt-4o-mini', name: 'gpt-4o-mini' }]
++        return [{ label: 'gpt-5.1', name: 'gpt-5.1' }]
+     }
+ }
+ 
+@@ -284,6 +288,58 @@ type LangGraphLogEvent = {
+     payload: any
+ }
+ 
++type LangGraphCredentialOptions = {
++    credentialId?: string
++    workspaceId?: string
++}
++
++const resolveOpenAIApiKeyFromStoredCredential = async (options?: LangGraphCredentialOptions): Promise<string | undefined> => {
++    const appServer = getRunningExpressApp()
++    const credentialRepo = appServer.AppDataSource.getRepository(Credential)
++
++    const extractOpenAIKey = async (credential: Credential): Promise<string | undefined> => {
++        try {
++            // Use raw decrypted data (no password redaction), otherwise API keys become _FLOWISE_BLANK_*
++            const decrypted = await decryptCredentialData(credential.encryptedData)
++            const key = decrypted?.openAIApiKey
++            if (typeof key !== 'string') return undefined
++            const trimmed = key.trim()
++            if (!trimmed || trimmed.startsWith(REDACTED_CREDENTIAL_VALUE_PREFIX)) return undefined
++            return trimmed
++        } catch {
++            return undefined
++        }
++    }
++
++    if (options?.credentialId) {
++        const lookup = options.workspaceId
++            ? { id: options.credentialId, workspaceId: options.workspaceId }
++            : { id: options.credentialId }
++        const credential = await credentialRepo.findOneBy(lookup)
++        if (!credential) {
++            throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Credential ${options.credentialId} not found`)
++        }
++        const key = await extractOpenAIKey(credential)
++        if (!key) {
++            throw new InternalFlowiseError(
++                StatusCodes.BAD_REQUEST,
++                `Credential ${options.credentialId} does not contain openAIApiKey`
++            )
++        }
++        return key
++    }
++
++    const credentials = options?.workspaceId
++        ? await credentialRepo.findBy({ workspaceId: options.workspaceId })
++        : await credentialRepo.find()
++    for (const credential of credentials) {
++        const key = await extractOpenAIKey(credential)
++        if (key) return key
++    }
++
++    return undefined
++}
++
+ /* Disabled: local heuristic validation (use with LLM repair when re-enabled)
+ const validateLangGraphCode = (code: string): LangGraphValidationResult => {
+     const issues: string[] = []
+@@ -380,18 +436,22 @@ const generateLangGraphCodeStream = async (
+     instruction?: string,
+     onLog?: (log: LangGraphLogEvent) => void,
+     onToken?: (phase: string, token: string) => void,
+-    modelOverride?: string
++    modelOverride?: string,
++    credentialOptions?: LangGraphCredentialOptions
+ ) => {
+     try {
+-        const apiKey = process.env.OPENAI_API_KEY
++        const apiKey = (await resolveOpenAIApiKeyFromStoredCredential(credentialOptions)) || process.env.OPENAI_API_KEY
+         if (!apiKey) {
+-            throw new InternalFlowiseError(StatusCodes.BAD_REQUEST, 'OPENAI_API_KEY is not configured.')
++            throw new InternalFlowiseError(
++                StatusCodes.BAD_REQUEST,
++                'OpenAI API key is not configured. Add an OpenAI credential or set OPENAI_API_KEY.'
++            )
+         }
+ 
+         const model =
+             typeof modelOverride === 'string' && modelOverride.trim().length > 0
+                 ? modelOverride.trim()
+-                : process.env.OPENAI_LANGGRAPH_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini'
++                : process.env.OPENAI_LANGGRAPH_MODEL || process.env.OPENAI_MODEL || 'gpt-5.1'
+         const userPrompt = getLangGraphUserPrompt(flowData, instruction)
+         const client = new OpenAI({ apiKey })
+ 
+diff --git a/packages/ui/src/views/chatflows/LangGraphWorkbenchDialog.jsx b/packages/ui/src/views/chatflows/LangGraphWorkbenchDialog.jsx
+index d3e53d80..336d6c81 100644
+--- a/packages/ui/src/views/chatflows/LangGraphWorkbenchDialog.jsx
++++ b/packages/ui/src/views/chatflows/LangGraphWorkbenchDialog.jsx
+@@ -26,7 +26,7 @@ import { vscodeDark } from '@uiw/codemirror-theme-vscode'
+ import { sublime } from '@uiw/codemirror-theme-sublime'
+ import chatflowsApi from '@/api/chatflows'
+ 
+-const DEFAULT_MODEL = 'gpt-4o-mini'
++const DEFAULT_MODEL = 'gpt-5.1'
+ 
+ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
+     const theme = useTheme()
+@@ -42,6 +42,7 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
+     const [modelOptions, setModelOptions] = useState([])
+     const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL)
+     const chatScrollRef = useRef(null)
++    const editorViewRef = useRef(null)
+     const currentTokenPhaseRef = useRef('')
+ 
+     const parseSSEEvent = (eventBlock) => {
+@@ -91,7 +92,17 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
+     }
+ 
+     const effectiveModelOptions =
+-        modelOptions.length > 0 ? modelOptions : [{ label: `${DEFAULT_MODEL} (loading list…)`, name: DEFAULT_MODEL }]
++        modelOptions.length > 0
++            ? modelOptions.some((m) => m.name === DEFAULT_MODEL)
++                ? modelOptions
++                : [{ label: DEFAULT_MODEL, name: DEFAULT_MODEL }, ...modelOptions]
++            : [{ label: `${DEFAULT_MODEL} (loading list…)`, name: DEFAULT_MODEL }]
++
++    const scrollEditorToBottom = useCallback(() => {
++        const view = editorViewRef.current
++        if (!view?.scrollDOM) return
++        view.scrollDOM.scrollTop = view.scrollDOM.scrollHeight
++    }, [])
+ 
+     const copyToClipboard = async (text) => {
+         try {
+@@ -111,9 +122,9 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
+                 if (cancelled || !Array.isArray(models) || models.length === 0) return
+                 setModelOptions(models)
+                 setSelectedModel((prev) => {
++                    if (prev === DEFAULT_MODEL) return DEFAULT_MODEL
+                     if (models.some((m) => m.name === prev)) return prev
+-                    const fallback = models.find((m) => m.name === DEFAULT_MODEL)?.name || models[0].name
+-                    return fallback
++                    return DEFAULT_MODEL
+                 })
+             } catch (e) {
+                 console.error('Failed to load OpenAI models for LangGraph workbench:', e)
+@@ -128,6 +139,14 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
+         }
+     }, [open])
+ 
++    useEffect(() => {
++        if (!isGenerating) return
++        const raf = requestAnimationFrame(() => {
++            scrollEditorToBottom()
++        })
++        return () => cancelAnimationFrame(raf)
++    }, [editorCode, isGenerating, scrollEditorToBottom])
++
+     const streamLangGraphCode = useCallback(
+         async (instruction) => {
+             let flowData = {}
+@@ -221,6 +240,7 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
+                                         })
+                                     }
+                                     setEditorCode((prev) => prev + event.data.token)
++                                    scrollEditorToBottom()
+                                 }
+                                 break
+                             case 'end':
+@@ -465,6 +485,10 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
+                             height='430px'
+                             theme={isDarkMode ? vscodeDark : sublime}
+                             onChange={(value) => setEditorCode(value)}
++                            onCreateEditor={(view) => {
++                                editorViewRef.current = view
++                                scrollEditorToBottom()
++                            }}
+                             extensions={[EditorView.lineWrapping]}
+                             basicSetup={{
+                                 lineNumbers: true,
+-- 
+2.45.1
+
