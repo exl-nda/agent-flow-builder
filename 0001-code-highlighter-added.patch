@@ -1,0 +1,43 @@
+From 1f43807542c91d0155dd2fcae0574086954cde18 Mon Sep 17 00:00:00 2001
+From: Shishir Umrao <shishirumrao.knp@gmail.com>
+Date: Tue, 7 Apr 2026 20:18:20 +0530
+Subject: [PATCH] code highlighter added
+
+---
+ Untitled                                                     | 1 +
+ packages/ui/src/views/chatflows/LangGraphWorkbenchDialog.jsx | 3 ++-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+ create mode 100644 Untitled
+
+diff --git a/Untitled b/Untitled
+new file mode 100644
+index 00000000..e23aa7bb
+--- /dev/null
++++ b/Untitled
+@@ -0,0 +1 @@
++0001-use-stored-cred-for-lg-code-generation.patch
+\ No newline at end of file
+diff --git a/packages/ui/src/views/chatflows/LangGraphWorkbenchDialog.jsx b/packages/ui/src/views/chatflows/LangGraphWorkbenchDialog.jsx
+index 336d6c81..18b1ebb4 100644
+--- a/packages/ui/src/views/chatflows/LangGraphWorkbenchDialog.jsx
++++ b/packages/ui/src/views/chatflows/LangGraphWorkbenchDialog.jsx
+@@ -22,6 +22,7 @@ import { useTheme } from '@mui/material/styles'
+ import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+ import CodeMirror from '@uiw/react-codemirror'
+ import { EditorView } from '@codemirror/view'
++import { python } from '@codemirror/lang-python'
+ import { vscodeDark } from '@uiw/codemirror-theme-vscode'
+ import { sublime } from '@uiw/codemirror-theme-sublime'
+ import chatflowsApi from '@/api/chatflows'
+@@ -489,7 +490,7 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
+                                 editorViewRef.current = view
+                                 scrollEditorToBottom()
+                             }}
+-                            extensions={[EditorView.lineWrapping]}
++                            extensions={[python(), EditorView.lineWrapping]}
+                             basicSetup={{
+                                 lineNumbers: true,
+                                 foldGutter: true,
+-- 
+2.45.1
+
