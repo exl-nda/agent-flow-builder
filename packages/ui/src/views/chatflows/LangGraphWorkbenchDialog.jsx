@@ -22,6 +22,7 @@ import { useTheme } from '@mui/material/styles'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import CodeMirror from '@uiw/react-codemirror'
 import { EditorView } from '@codemirror/view'
+import { python } from '@codemirror/lang-python'
 import { vscodeDark } from '@uiw/codemirror-theme-vscode'
 import { sublime } from '@uiw/codemirror-theme-sublime'
 import chatflowsApi from '@/api/chatflows'
@@ -489,7 +490,7 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
                                 editorViewRef.current = view
                                 scrollEditorToBottom()
                             }}
-                            extensions={[EditorView.lineWrapping]}
+                            extensions={[python(), EditorView.lineWrapping]}
                             basicSetup={{
                                 lineNumbers: true,
                                 foldGutter: true,
