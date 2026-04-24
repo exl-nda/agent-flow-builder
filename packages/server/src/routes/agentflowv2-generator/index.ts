@@ -5,5 +5,7 @@ const router = express.Router()
 router.post('/generate', agentflowv2GeneratorController.generateAgentflowv2)
 router.get('/openai-chat-models', agentflowv2GeneratorController.listOpenAIChatModels)
 router.post('/langgraph-code/stream', agentflowv2GeneratorController.generateLangGraphCodeStream)
+router.get('/generated-code/:chatflowId/:codeType', agentflowv2GeneratorController.getGeneratedWorkbenchCode)
+router.put('/generated-code', agentflowv2GeneratorController.saveGeneratedWorkbenchCode)
 
 export default router

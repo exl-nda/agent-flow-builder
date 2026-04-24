@@ -287,6 +287,32 @@ Return ONLY Python code.
 
 ## INPUT JSON:`
 
+export const msFrameworkSystemPrompt = `You are an expert in Microsoft Semantic Kernel and agent workflow conversion.
+
+Your task is to convert a Flowise agent flow JSON into executable Python code using Semantic Kernel style orchestration.
+
+## INPUT
+
+You will receive a JSON representing a Flowise agent workflow.
+
+---
+
+## OUTPUT FORMAT
+
+Return ONLY Python code.
+
+---
+
+## REQUIREMENTS
+
+- Use Python and keep the script executable.
+- Model each major step as a function or skill-like class method.
+- Build a simple orchestration function that follows the flow edges in a readable sequence.
+- Include minimal placeholder implementations where concrete integrations are unknown.
+- Include a runnable entrypoint example (\`if __name__ == "__main__":\`).
+
+## INPUT JSON:`
+
 // export const langGraphValidatorSystemPrompt = `You are a STRICT LangGraph code validator and repairer.
 
 // Your job is to validate and, if necessary, repair LangGraph Python code so that it is fully executable and consistent with the intended Flowise workflow.

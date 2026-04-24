@@ -24,6 +24,10 @@ const generateAgentflow = (body) => client.post(`/agentflowv2-generator/generate
 
 const getLangGraphOpenAIModels = () => client.get('/agentflowv2-generator/openai-chat-models')
 
+const getGeneratedWorkbenchCode = (chatflowId, codeType) => client.get(`/agentflowv2-generator/generated-code/${chatflowId}/${codeType}`)
+
+const saveGeneratedWorkbenchCode = (body) => client.put('/agentflowv2-generator/generated-code', body)
+
 export default {
     getAllChatflows,
     getAllAgentflows,
@@ -36,5 +40,7 @@ export default {
     getAllowChatflowUploads,
     getHasChatflowChanged,
     generateAgentflow,
-    getLangGraphOpenAIModels
+    getLangGraphOpenAIModels,
+    getGeneratedWorkbenchCode,
+    saveGeneratedWorkbenchCode
 }

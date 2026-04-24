@@ -6,13 +6,14 @@ import path from 'path'
 import * as fs from 'fs'
 import { generateAgentflowv2 as generateAgentflowv2_json } from 'flowise-components'
 import { z } from 'zod'
-import { sysPrompt, langGraphSystemPrompt } from './prompt'
+import { sysPrompt, langGraphSystemPrompt, msFrameworkSystemPrompt } from './prompt'
 import { databaseEntities } from '../../utils'
 import { decryptCredentialData } from '../../utils'
 import logger from '../../utils/logger'
 import { MODE } from '../../Interface'
 import OpenAI from 'openai'
 import { Credential } from '../../database/entities/Credential'
+import { GeneratedWorkbenchCode } from '../../database/entities/GeneratedWorkbenchCode'
 
 const REDACTED_CREDENTIAL_VALUE_PREFIX = '_FLOWISE_BLANK_'
 
@@ -277,6 +278,58 @@ const getLangGraphUserPrompt = (flowData: Record<string, any>, instruction?: str
     return `${serializedFlow}${additionalInstruction}`
 }
 
+type WorkbenchCodeType = 'langgraph' | 'msFramework'
+
+type GeneratedWorkbenchCodePayload = {
+    chatflowId: string
+    codeType: WorkbenchCodeType
+    code: string
+    workspaceId: string
+}
+
+const getGeneratedWorkbenchCode = async (chatflowId: string, codeType: WorkbenchCodeType, workspaceId: string) => {
+    try {
+        const appServer = getRunningExpressApp()
+        const repo = appServer.AppDataSource.getRepository(GeneratedWorkbenchCode)
+        return await repo.findOneBy({ chatflowId, codeType, workspaceId })
+    } catch (error) {
+        throw new InternalFlowiseError(
+            StatusCodes.INTERNAL_SERVER_ERROR,
+            `Error: getGeneratedWorkbenchCode - ${getErrorMessage(error)}`
+        )
+    }
+}
+
+const upsertGeneratedWorkbenchCode = async (payload: GeneratedWorkbenchCodePayload) => {
+    try {
+        const appServer = getRunningExpressApp()
+        const repo = appServer.AppDataSource.getRepository(GeneratedWorkbenchCode)
+        const existing = await repo.findOneBy({
+            chatflowId: payload.chatflowId,
+            codeType: payload.codeType,
+            workspaceId: payload.workspaceId
+        })
+
+        if (existing) {
+            existing.code = payload.code
+            return await repo.save(existing)
+        }
+
+        const record = repo.create({
+            chatflowId: payload.chatflowId,
+            codeType: payload.codeType,
+            code: payload.code,
+            workspaceId: payload.workspaceId
+        })
+        return await repo.save(record)
+    } catch (error) {
+        throw new InternalFlowiseError(
+            StatusCodes.INTERNAL_SERVER_ERROR,
+            `Error: upsertGeneratedWorkbenchCode - ${getErrorMessage(error)}`
+        )
+    }
+}
+
 type LangGraphValidationResult = {
     passed: boolean
     issues: string[]
@@ -437,7 +490,8 @@ const generateLangGraphCodeStream = async (
     onLog?: (log: LangGraphLogEvent) => void,
     onToken?: (phase: string, token: string) => void,
     modelOverride?: string,
-    credentialOptions?: LangGraphCredentialOptions
+    credentialOptions?: LangGraphCredentialOptions,
+    codeType: WorkbenchCodeType = 'langgraph'
 ) => {
     try {
         const apiKey = (await resolveOpenAIApiKeyFromStoredCredential(credentialOptions)) || process.env.OPENAI_API_KEY
@@ -455,11 +509,12 @@ const generateLangGraphCodeStream = async (
         const userPrompt = getLangGraphUserPrompt(flowData, instruction)
         const client = new OpenAI({ apiKey })
 
+        const systemPrompt = codeType === 'msFramework' ? msFrameworkSystemPrompt : langGraphSystemPrompt
         const candidateCode = await generateCompletionFromMessages(
             client,
             model,
             [
-                { role: 'system', content: langGraphSystemPrompt },
+                { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt }
             ],
             'generation',
@@ -473,8 +528,11 @@ const generateLangGraphCodeStream = async (
             code: candidateCode,
             model,
             artifact: {
-                instruction: instruction || 'Auto-generate LangGraph code from current flow JSON',
-                flowData
+                instruction:
+                    instruction ||
+                    `Auto-generate ${codeType === 'msFramework' ? 'MS Framework' : 'LangGraph'} code from current flow JSON`,
+                flowData,
+                codeType
             },
             phases: ['generation'],
             validation: validationResult
@@ -486,5 +544,7 @@ const generateLangGraphCodeStream = async (
 
 export default {
     generateAgentflowv2,
-    generateLangGraphCodeStream
+    generateLangGraphCodeStream,
+    getGeneratedWorkbenchCode,
+    upsertGeneratedWorkbenchCode
 }

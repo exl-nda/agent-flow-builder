@@ -28,8 +28,13 @@ import { sublime } from '@uiw/codemirror-theme-sublime'
 import chatflowsApi from '@/api/chatflows'
 
 const DEFAULT_MODEL = 'gpt-5.1'
+const DEFAULT_CODE_TYPE = 'langgraph'
+const CODE_TYPE_OPTIONS = [
+    { label: 'LangGraph Code', value: 'langgraph' },
+    { label: 'MS Framework Code', value: 'msFramework' }
+]
 
-const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
+const LangGraphWorkbenchDialog = ({ open, chatflow, initialCode, onClose }) => {
     const theme = useTheme()
     const isDarkMode = theme.palette.mode === 'dark'
     const [chatMessages, setChatMessages] = useState([])
@@ -37,7 +42,19 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
     const [editorCode, setEditorCode] = useState('')
     const [isGenerating, setIsGenerating] = useState(false)
     const [generationError, setGenerationError] = useState('')
-    const hasAutoSentRef = useRef(false)
+    const [selectedCodeType, setSelectedCodeType] = useState(DEFAULT_CODE_TYPE)
+    const [generatedCodeByType, setGeneratedCodeByType] = useState({
+        langgraph: initialCode || '',
+        msFramework: ''
+    })
+    const [updatedDateByType, setUpdatedDateByType] = useState({
+        langgraph: null,
+        msFramework: null
+    })
+    const [loadedCodeTypes, setLoadedCodeTypes] = useState({
+        langgraph: false,
+        msFramework: false
+    })
     const abortControllerRef = useRef(null)
     const [expandedEntries, setExpandedEntries] = useState({})
     const [modelOptions, setModelOptions] = useState([])
@@ -99,6 +116,13 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
                 : [{ label: DEFAULT_MODEL, name: DEFAULT_MODEL }, ...modelOptions]
             : [{ label: `${DEFAULT_MODEL} (loading list…)`, name: DEFAULT_MODEL }]
 
+    const formatLastUpdated = useCallback((updatedDate) => {
+        if (!updatedDate) return 'N/A'
+        const parsedDate = new Date(updatedDate)
+        if (Number.isNaN(parsedDate.getTime())) return 'N/A'
+        return parsedDate.toLocaleString()
+    }, [])
+
     const scrollEditorToBottom = useCallback(() => {
         const view = editorViewRef.current
         if (!view?.scrollDOM) return
@@ -141,6 +165,14 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
     }, [open])
 
     useEffect(() => {
+        if (!initialCode) return
+        setGeneratedCodeByType((prev) => ({
+            ...prev,
+            langgraph: prev.langgraph || initialCode
+        }))
+    }, [initialCode])
+
+    useEffect(() => {
         if (!isGenerating) return
         const raf = requestAnimationFrame(() => {
             scrollEditorToBottom()
@@ -158,11 +190,15 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
                 return
             }
 
-            const effectiveInstruction = instruction?.trim() || 'Generate LangGraph code from current flow JSON'
+            const activeCodeType = selectedCodeType
+            const generatedTypeLabel = activeCodeType === 'msFramework' ? 'MS Framework' : 'LangGraph'
+            let streamedCode = ''
+            const effectiveInstruction = instruction?.trim() || `Generate ${generatedTypeLabel} code from current flow JSON`
             const artifactPayload = JSON.stringify(
                 {
                     instruction: effectiveInstruction,
-                    flowData
+                    flowData,
+                    codeType: selectedCodeType
                 },
                 null,
                 2
@@ -170,7 +206,7 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
 
             appendMessage({
                 role: 'artifact',
-                title: 'Auto Prompt Artifact',
+                title: `${generatedTypeLabel} Prompt Artifact`,
                 content: artifactPayload
             })
 
@@ -194,7 +230,8 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
                     body: JSON.stringify({
                         flowData,
                         instruction: effectiveInstruction,
-                        model: selectedModel
+                        model: selectedModel,
+                        codeType: activeCodeType
                     })
                 })
 
@@ -235,12 +272,24 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
                                     if (currentTokenPhaseRef.current !== tokenPhase) {
                                         currentTokenPhaseRef.current = tokenPhase
                                         setEditorCode('')
+                                        setGeneratedCodeByType((prev) => ({
+                                            ...prev,
+                                            [activeCodeType]: ''
+                                        }))
                                         appendMessage({
                                             role: 'assistant',
                                             content: `Streaming code for phase: ${tokenPhase}`
                                         })
                                     }
-                                    setEditorCode((prev) => prev + event.data.token)
+                                    setEditorCode((prev) => {
+                                        const nextCode = prev + event.data.token
+                                        streamedCode = nextCode
+                                        setGeneratedCodeByType((prevCodeMap) => ({
+                                            ...prevCodeMap,
+                                            [activeCodeType]: nextCode
+                                        }))
+                                        return nextCode
+                                    })
                                     scrollEditorToBottom()
                                 }
                                 break
@@ -249,6 +298,21 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
                                     role: 'assistant',
                                     content: 'Generation complete.'
                                 })
+                                if (chatflow?.id && streamedCode) {
+                                    const savedCode = await chatflowsApi.saveGeneratedWorkbenchCode({
+                                        chatflowId: chatflow.id,
+                                        codeType: activeCodeType,
+                                        code: streamedCode
+                                    })
+                                    setUpdatedDateByType((prev) => ({
+                                        ...prev,
+                                        [activeCodeType]: savedCode?.data?.updatedDate || null
+                                    }))
+                                    setLoadedCodeTypes((prev) => ({
+                                        ...prev,
+                                        [activeCodeType]: true
+                                    }))
+                                }
                                 break
                             case 'log':
                                 appendMessage({
@@ -279,36 +343,71 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
                 setIsGenerating(false)
             }
         },
-        [appendMessage, chatflow?.flowData, selectedModel]
+        [appendMessage, chatflow?.flowData, chatflow?.id, selectedCodeType, selectedModel, scrollEditorToBottom]
     )
 
     useEffect(() => {
-        if (open && !hasAutoSentRef.current) {
-            hasAutoSentRef.current = true
-            setChatMessages([])
-            setChatInput('')
-            setEditorCode('')
-            setGenerationError('')
-            setExpandedEntries({})
-            appendMessage({
-                role: 'assistant',
-                content: 'Workbench opened. Auto-sending flow JSON to generate LangGraph code.'
-            })
-            streamLangGraphCode('')
-        }
         if (!open) {
-            hasAutoSentRef.current = false
             if (abortControllerRef.current) {
                 abortControllerRef.current.abort()
             }
+            setLoadedCodeTypes({
+                langgraph: false,
+                msFramework: false
+            })
         }
-    }, [appendMessage, open, streamLangGraphCode])
+    }, [open])
 
-    const handleSend = async () => {
-        if (!chatInput.trim() || isGenerating) return
+    useEffect(() => {
+        if (!open || !chatflow?.id) return
+        if (loadedCodeTypes[selectedCodeType]) return
+
+        let cancelled = false
+        ;(async () => {
+            try {
+                const res = await chatflowsApi.getGeneratedWorkbenchCode(chatflow.id, selectedCodeType)
+                if (cancelled) return
+                const code = res?.data?.code || ''
+                setGeneratedCodeByType((prev) => ({
+                    ...prev,
+                    [selectedCodeType]: code || prev[selectedCodeType]
+                }))
+                setUpdatedDateByType((prev) => ({
+                    ...prev,
+                    [selectedCodeType]: res?.data?.updatedDate || null
+                }))
+                setLoadedCodeTypes((prev) => ({
+                    ...prev,
+                    [selectedCodeType]: true
+                }))
+            } catch (e) {
+                if (!cancelled) {
+                    console.error('Failed to load generated workbench code:', e)
+                }
+            }
+        })()
+
+        return () => {
+            cancelled = true
+        }
+    }, [open, chatflow?.id, selectedCodeType, loadedCodeTypes])
+
+    useEffect(() => {
+        setEditorCode(generatedCodeByType[selectedCodeType] || '')
+    }, [generatedCodeByType, selectedCodeType])
+
+    const handleGenerate = async () => {
+        if (isGenerating) return
         const userInstruction = chatInput.trim()
-        appendMessage({ role: 'user', content: userInstruction })
-        setChatInput('')
+        if (userInstruction) {
+            appendMessage({ role: 'user', content: userInstruction })
+            setChatInput('')
+        } else {
+            appendMessage({
+                role: 'assistant',
+                content: `Generating ${selectedCodeType === 'msFramework' ? 'MS Framework' : 'LangGraph'} code from flow JSON.`
+            })
+        }
         await streamLangGraphCode(userInstruction)
     }
 
@@ -334,8 +433,24 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
                             Chat
                         </Typography>
                         <Typography variant='caption' color='text.secondary' sx={{ mb: 2 }}>
-                            Chat instructions will regenerate code using OpenAI and stream it into the editor.
+                            Pick code type, optionally add instruction, then click Generate.
                         </Typography>
+                        <FormControl size='small' sx={{ mb: 1.5 }} disabled={isGenerating}>
+                            <InputLabel id='workbench-code-type-select-label'>Code Type</InputLabel>
+                            <Select
+                                labelId='workbench-code-type-select-label'
+                                id='workbench-code-type-select'
+                                value={selectedCodeType}
+                                label='Code Type'
+                                onChange={(e) => setSelectedCodeType(e.target.value)}
+                            >
+                                {CODE_TYPE_OPTIONS.map((option) => (
+                                    <MenuItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
                         <Box
                             ref={chatScrollRef}
                             sx={{
@@ -434,19 +549,24 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                         e.preventDefault()
-                                        handleSend()
+                                        handleGenerate()
                                     }
                                 }}
                             />
-                            <Button variant='contained' onClick={handleSend} disabled={!chatInput.trim() || isGenerating}>
-                                Send
+                            <Button variant='contained' onClick={handleGenerate} disabled={isGenerating}>
+                                {isGenerating ? 'Generating...' : 'Generate'}
                             </Button>
                         </Stack>
                     </Paper>
 
                     <Paper variant='outlined' sx={{ flex: 1.6, p: 2, display: 'flex', flexDirection: 'column', minWidth: 420 }}>
                         <Stack direction='row' justifyContent='space-between' alignItems='center' sx={{ mb: 1 }} flexWrap='wrap' gap={1}>
-                            <Typography variant='h4'>Code Editor</Typography>
+                            <Box>
+                                <Typography variant='h4'>Code Editor</Typography>
+                                <Typography variant='caption' color='text.secondary'>
+                                    Last updated on: {formatLastUpdated(updatedDateByType[selectedCodeType])}
+                                </Typography>
+                            </Box>
                             <Stack direction='row' spacing={1} alignItems='center' flexWrap='wrap'>
                                 <FormControl size='small' sx={{ minWidth: 220 }} disabled={isGenerating}>
                                     <InputLabel id='langgraph-model-select-label'>Model</InputLabel>
@@ -507,6 +627,7 @@ const LangGraphWorkbenchDialog = ({ open, chatflow, onClose }) => {
 LangGraphWorkbenchDialog.propTypes = {
     open: PropTypes.bool,
     chatflow: PropTypes.object,
+    initialCode: PropTypes.string,
     onClose: PropTypes.func
 }
 

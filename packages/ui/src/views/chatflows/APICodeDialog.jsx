@@ -1197,6 +1197,7 @@ if __name__ == "__main__":
                                 </Box>
                                 <LangGraphWorkbenchDialog
                                     open={langGraphWorkbenchOpen}
+                                    chatflow={chatflow}
                                     initialCode={getLanggraphCode()}
                                     onClose={() => setLangGraphWorkbenchOpen(false)}
                                 />
